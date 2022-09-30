@@ -1,5 +1,7 @@
 # IoTStreamingPlatformV2
 ## 시작하기
+### 구조도 
+ ![구조도](./img/structure.jpg)
 ### 설치
  * Node.js : 14.X (16 빌드 에러)
  * Mysql
@@ -15,12 +17,13 @@
  * MobiusV2/mobius.js
  * MobiusV2/conf.json
 
-### Kafka Connector 생성
+### Kafka Connector 생성 
  * Custom InfluxDB Sink Connector
  * Postgresql Sink Connector
  * InfluxDB Sink Connector
- > mvn clean package -DskipTests
+ > Connector 빌드 : mvn clean package -DskipTests
 
+ * Kafka config 파일에 connector 주소 추가
  > kafkaDIR/config/connect-distributed.properties -> plugin.path에 target 주소 추가
 
     plugin.path=/home/cotlab/data-collection-platform/stream-reactor-1.2.7-2.1.0,/home/cotlab/data-collection-platform/custom-kafka-connect-influxdb/target,/home/cotlab/data-collection-platform/kafka-connect-jdbc/target 
@@ -29,6 +32,7 @@
  * github 주소 : https://github.com/confluentinc/ksql
  * MVN 빌드하여 사용
  * 8088 포트가 influxdb와 겹칠 수도 있어 8090으로 포트 변경 (config/ksql-server.properties)
+ * 📁빌드된 파일 업로드 해 놓음
 
 
 ### 실행 순서
