@@ -1,0 +1,85 @@
+@import "common";
+
+.drawer {
+  display: inline-block;  
+  position: fixed;
+
+  padding-top: 40px;
+  left: 0;
+  width: $drawer-width;
+  height: 100%;
+  z-index: 99;
+  outline: 0;
+
+  .menu {
+    width: 100%;
+    margin: 0;
+    line-height: 40px;
+
+    .nav-item {
+      text-align: left;
+      color: $font-color-mild;
+
+      &:hover {
+        color: $font-color-bright;
+      }
+
+      a {
+        padding: 0 0 0 10px;
+        color: inherit;
+        text-decoration: none;
+        text-align: left;
+      }
+
+      &.sub-contents {
+        display: none;
+        background-color: rgba(69,69,69,.6);
+
+        li {
+          list-style-type: none;
+        }
+      }
+
+      ul {
+        padding-inline-start: 0;
+      }
+    }
+
+    p {
+      display: inline-block;
+      margin: 0;
+    }
+  }
+
+
+
+  background-color: $default-background-color;
+
+  .menu-contents {
+    width: 100%;
+
+    .sub-contents {
+      display: none;
+      width: 100%;
+      padding-left: 10px;
+    }
+  }
+
+  a[href^='/home/'] {
+    width: 100%;
+  }
+}
+
+button {
+  border-radius: 0;
+  text-align: left;
+  height: 40px;
+  background-color: $default-background-color;
+  border: none;
+
+  :active {
+    border: none;
+  }
+
+  /* padding-left: 10px; */
+}

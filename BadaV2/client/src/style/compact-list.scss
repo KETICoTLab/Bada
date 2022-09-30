@@ -1,0 +1,135 @@
+// Import global variables defined file
+@import 'common';
+
+// Styles define
+.compact-list {
+  display: inline-block;
+  vertical-align: top;
+
+  width: 48%;
+  padding: 10px;
+
+  &.height-2 {
+    .contents {
+      min-height: 350px;
+      height: calc(100vh - 700px);
+
+      .table {
+        .time-column-size {
+          width: 200px;
+        }
+        .name-column-size {
+          width: 15vw;
+        }
+      }
+    }
+  }
+
+  .contents {
+    min-width: 515px;
+    height: 350px;
+
+    background-color: #FFF;
+    border: 1px solid $default-border-color;
+
+    .title {
+      @extend %module-title;
+      padding: 10px 0 5px 10px;
+      text-align: left;
+    }
+
+    .table {
+      font-size: 1rem;
+      line-height: 1.2rem;
+
+      thead {
+        color: white;
+      }
+      tbody {
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .ae {
+      thead {
+        background-color: $item-color-second;
+      }
+    }
+    .cnt {
+      thead {
+        background-color: $item-color-third;
+      }
+    }
+    .cin {
+      thead {
+        color: $font-color-dark;
+        background-color: $table-header-color-forth;
+      }
+    }
+
+    .list {
+      margin: 0 10px;
+      height: calc(100% - 52px);
+      overflow-y: auto;
+      // border: 1px solid $default-border-color;
+      // background-color: whitesmoke;
+
+      .table {
+        // height: 90%;
+
+        tr > td.align-timer {
+          text-align: right;
+        }
+
+        td {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        tr:nth-child(even) {
+          background-color: #FFF;
+        }
+
+        .b-table-details > td {
+          background-color: whitesmoke;      
+        }
+
+        .json-tree {
+          padding-top: 10px;
+          padding-bottom: 10px;
+          padding-left: 50px;
+          text-align: left;
+          font-size: 15px;
+          font-weight: bold;
+        }
+
+        .detail-text {
+          word-break: break-all;
+        }
+      }
+    }
+  }
+}
+
+div.popover {
+  max-width: none;
+  width: 550px;
+  margin-right: 20px;
+  font-family: BadaFontsStack;
+  color: $font-color-dark;
+
+  .popover-body {
+    padding: 0;
+  }
+}
+
+.pointer {
+  box-sizing: border-box;
+
+  &:hover {
+    cursor: pointer; 
+  }
+}

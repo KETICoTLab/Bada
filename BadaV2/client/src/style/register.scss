@@ -1,0 +1,281 @@
+@import 'common';
+
+.register {
+  padding-top: $navibar-height;
+  padding-bottom: 50px;
+  padding-left: $drawer-width;;
+
+  .contents {
+
+    .title {
+      @extend %component-title;
+    }
+
+
+    .context {
+      padding: 20px;
+      font-size: $default-font-size;
+
+      .auto-create-wrapper {
+        background-color: #e9ecef;
+        border: 1px solid $default-border-color;
+        width: 34px;
+        // padding-left: 10px;
+        align-items: center;
+
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
+
+        .text {
+          color: $font-color-mild;
+          font-size: $text-font-size;
+        }
+        
+        .auto-creation {
+          height: 18px;
+          width: 18px;
+          margin: 0 auto;
+        }
+      }
+
+      .date-time-area {
+        width: calc(100% - 240px);
+        border: 1px solid #ced4da;
+
+        .datetime-clear {
+          background-color: transparent;
+          border: none;
+          color: $font-color-mild;
+          font-size: $text-font-size;
+
+          &:hover {
+            font-weight: bold;
+          }
+        }
+
+        .et-default-value {
+          line-height: 38px;
+          color: $font-color-mild;
+          padding-left: 20px;
+        }
+      }
+
+      .wrapper {
+        height: inherit;
+        
+        .date_input {
+          width: 110px;
+          height: 38px;
+          padding-left: 12px;
+          margin-right: 5px;
+          border: none;
+          color: $font-color-dark;
+        }
+        .vdp-datepicker__calendar {
+          .cell.selected {
+            background-color: #17a2b8;
+            color: $font-color-bright;
+          }
+        }
+      }
+      // .time-picker input.display-time
+      .time-picker {
+        width: 80px;
+        input.display-time {
+          width: 80px;
+          height: 38px;
+          padding: 0 0 0 5px;
+          border: none;
+          color: $font-color-dark;
+          font-family: $font-family-base;
+          font-size: $default-font-size;
+        }
+
+        .dropdown {
+          color: $font-color-dark;
+          font-family: $font-family-base;
+          font-size: $default-font-size;
+          li.active {
+            background-color: #17a2b8;
+          }
+        }
+      }
+
+
+      .select-area {
+        font-size: $default-font-size;
+        text-align: left;
+        margin-top: 5px;
+        margin-bottom: 20px;
+
+        .resource-label {
+          font-size: $default-font-size;
+          display: inline-block;
+          vertical-align: middle;
+          margin: 0;
+        }
+        .resource-select {
+          display: inline-block;
+          margin-left: 10px;
+        }
+      }
+
+      .input-area {
+        padding: 20px;
+        width: 800px;
+        min-height: 300px;
+
+        background-color: #FFF;
+        border: 1px solid $default-border-color;
+        
+        .form-title {
+          font-size: $subtitle-font-size;
+          border-bottom: 1px solid $default-border-color;
+          padding-bottom: 20px;
+          margin-bottom: 15px;
+        }
+        .input-group-text {
+          width: 240px;
+          justify-content: space-between;
+          padding-right: 6px;
+
+          // > div {
+          //   display: inline-block;
+          //   padding: 0;
+          // }
+          .prepend-first {
+            text-align: left;
+          }
+          .prepend-second {
+            width: 20%;
+            padding-left: 6px;
+            border-left: 1px solid $default-border-color;
+            text-align: center;
+          }
+        }
+
+        .label-group {
+          .input-label {
+            padding-left: 240px;
+          }
+        }
+
+        .label-group {
+          .form-group {
+            // height: 38px;
+            width: calc(100% - 239px);
+            margin-top: -10px;
+            margin-bottom: 0;
+
+          }
+          .form-control {
+            border-radius: 0;
+          }
+          select.form-control {
+            border-right: none;
+          }
+        }
+
+        .input-group {
+          margin-top: 10px;
+        }
+
+        .default {
+          color: $font-color-dark;
+        }
+
+        .input-form-cnt {
+          .resource-selection {
+            width: 100%;
+          }
+          .storage-option {
+            margin-top: 15px;
+          }
+          .checkbox-group {
+            width: calc(100% - 240px);
+            border: 1px solid #ced4da;
+
+            padding-left: 12px;
+            text-align: left;
+
+            &:before{
+              content: ""; 
+              display: inline-block;
+              width: 1px; 
+              height: 100%;
+              margin-right: 0; vertical-align: middle;
+            }
+          }
+
+        }
+
+        .input-form-sub {
+          .checkbox-group {
+            width: calc(100% - 240px);
+            border: 1px solid #ced4da;
+            .container {
+              padding: 0;
+              .row {
+                text-align: left;
+                .col-4 {
+                  padding-left: 15px;
+                  background-color: $table-hover-color;
+                  border-right: 1px solid $default-border-color;
+                }
+                .col-3 {
+                  padding-left: 15px;
+                  sub {
+                    padding-left: 5px;
+                    // display: inline-block;
+                    font-size: 0.8em;
+                  }
+                }
+  
+                .col {
+                  padding-left: 15px;
+                }
+              }
+              .row + .row {
+                border-top: 1px solid $default-border-color;
+              }
+            }
+          }
+        }
+
+        .form-control:disabled {
+          background-color: whitesmoke;
+          color: $font-color-mild;
+        }
+
+      }
+
+      .format-footer {
+        padding: 10px;
+        .help-text {
+          color: $font-color-mild;
+          text-align: left;
+        }
+        .button-area {
+          text-align: right;
+        }
+      }
+
+    }
+
+    .json-tree {
+      text-align: left;
+      font-size: 15px;         
+    }
+  }
+}
+
+.tooltip {
+  .arrow::before {
+    border-top-color: $button-color-gray;
+    // background-color: $default-background-color;
+  }
+  .tooltip-inner {
+    background-color: $button-color-gray;
+    color: $font-color-bright;
+  }
+}

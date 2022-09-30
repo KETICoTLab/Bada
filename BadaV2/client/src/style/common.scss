@@ -1,0 +1,102 @@
+// @import 'bootstrap/dist/css/bootstrap.css';
+
+// Font Variables
+@import url('https://fonts.googleapis.com/css?family=Dancing+Script|Cabin+Condensed|Nanum+Gothic|Roboto');
+
+@font-face {
+  font-family: 'BadaFontsStack';
+  src: url('./fonts/RobotoCondensed-Regular.ttf'), url('https://fonts.googleapis.com/css?family=Cabin+Condensed|Nanum+Gothic|Roboto');
+  font-weight: normal;
+  font-style: normal;
+}
+
+$font-family-base: BadaFontsStack, Georgia, sans-serif !default;
+$font-family-size: 18px;
+
+// Color Variables
+$variant-primary: 'primary';
+$variant-secondary: 'secondary';
+$variant-success: 'success';
+$variant-warning: 'warning';
+$variant-danger: 'danger';
+$variant-info: 'info';
+$variant-light: 'light';
+$variant-dark: 'dark';
+
+// $default-background-color : rgb(71, 69, 68) !default;
+$default-background-color : #3a3633;
+$default-background-color-inner: #F1F1F1;
+$default-border-color : #ddd !default;
+
+/* Font Color */
+$font-color-bright: #F1F1F1;
+$font-color-mild: #9D9C97;
+$font-color-dark: #4C4C4C;
+
+/* Main Theme Color */
+// $main-theme-color: #0049b7;
+$main-theme-color: #3a3633;
+
+/* Item Color */
+$item-color-first: #a90329;
+$item-color-second: #71843f;
+$item-color-third: #57889c;
+$item-color-forth: #c79121; 
+$item-color-fifth: #999999;
+
+
+// Item Button Color
+$button-color-first: #3276b1;
+$button-color-second: #57889c;
+$button-color-third: #739e73;
+$button-color-forth: #c79121;
+$button-color-fifth: #a90329;
+$button-color-gray: #92a2a8;
+
+
+
+/* Table Color */
+$table-header-color-first: #4c4f53;
+$table-header-color-second: #404040;
+$table-header-color-third: #496949;
+$table-header-color-forth: #efe1b3;
+$table-hover-color: #EEF3F8;
+
+
+/* Font Size  */
+$text-font-size: 14px;
+$default-font-size: 16px;
+$moduletitle-font-size: 18px;
+$subtitle-font-size: 20px;
+$title-font-size: 24px;
+
+
+/* Blank Layout  */
+$drawer-width: 200px;
+$navibar-height: 40px;
+
+
+%module-title {
+  font-size: $moduletitle-font-size;
+};
+
+%component-title {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-left: 15px;
+  text-align: left;
+  color: $font-color-dark;
+  font-weight: normal;
+  font-size: $title-font-size;
+  
+  > * {
+    display: inline-block;
+    vertical-align: middle;
+  }
+}
+
+:root {
+  font-family: $font-family-base;
+  --font-family-sans-serif: $font-family-base;
+  --font-family-monospace: $font-family-base;
+}

@@ -1,0 +1,43 @@
+// Import
+@import "common";
+
+// Styles Define
+.dashboard {
+  padding-top: $navibar-height;
+  padding-left: $drawer-width;
+
+  .title {
+    @extend %component-title;
+  }
+
+  .contents {
+    width: 100%;
+
+    display: inline-block;
+    background-color: #f4f4f4;
+
+    @media screen and (min-width: 1310px) {
+      .block {
+        display: flex;
+        text-align: left;
+        > * {
+          flex: 1;
+        }
+      }
+    }
+    @media screen and (max-width: 1310px) {
+      .block {
+        > * {
+          display: block;
+          width: 100%;
+        }
+      }
+    }
+  }
+}
+
+.echarts {
+  position: static;
+  width: 400px;
+  height: 400px;
+}

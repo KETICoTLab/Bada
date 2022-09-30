@@ -1,0 +1,127 @@
+@import 'common';
+
+.usages {
+  display: inline-block;
+  width: 48%;
+  padding: 10px;
+  text-align: left;
+
+  .contents {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    min-width: 722px;
+
+    @media only screen and (min-width : 2800px) {
+      .jumbotron {        
+        padding: 0.5rem 0.5rem;
+
+        .lead {
+          margin-bottom: 8px;
+        }
+      }
+    }
+
+    @media only screen and (max-width : 2799px) {
+      .jumbotron {
+        padding: 1rem 1rem 0 1rem;
+
+        .lead {
+          margin-bottom: 8px;
+        }
+      }
+    }
+
+    .jumbotron {
+      display: inline-block;
+      width: 33%;
+      height: 150px;
+      background-color: #FFF;
+      border: 1px solid $default-border-color;
+      
+      .lead {
+        text-align: left;
+        font-size: $text-font-size;
+      }
+
+      .usage {
+        float: right;
+        width: 75%;
+        font-size: $default-font-size;
+
+        .small {
+          font-size: 8px;
+          padding-left: 10px;
+        }
+        .col {
+          padding: 0;
+        }
+        .value {
+          text-align: right;
+          padding-right: 10px;
+        }
+
+        &.responsetime {
+          float: none;
+          width: 100%;
+          padding: 2px 2px 0 2px;
+
+          .row {
+            line-height: 40px;
+
+            .col {
+              border-radius: 5px;
+              border: 1px solid $default-border-color;
+
+              &.method-type {
+                text-align: center;
+  
+                color: $font-color-bright;
+                background-color: $button-color-first;
+  
+                border-bottom: none;
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+              }
+
+              &.method-value {
+                padding-right: 6px;
+  
+                text-align: right;
+  
+                border-top: 0;
+                border-radius: 0;
+              }
+            }
+          }
+        }
+      }
+  
+      [class^=icon] {
+        float: left;
+        margin-top: 2px;
+        
+        width: 40px;
+        height: 40px;
+        background-color: $button-color-first;
+        border-radius: 8px;
+        background-repeat: no-repeat;
+      }
+  
+      .icon-cpu {
+        background-image: url('../images/cpu.png');
+        background-size: 40px 40px;
+      }
+      .icon-memory {
+        background-image: url('../images/ram.png');
+        background-size: 40px 40px;
+      }
+      .icon-response-time {
+        background-image: url('../images/responsive.png');
+        background-size: 40px 40px;
+      }
+
+
+    }
+  }
+}

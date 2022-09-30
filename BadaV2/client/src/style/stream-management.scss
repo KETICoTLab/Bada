@@ -1,0 +1,237 @@
+// Import
+@import "common";
+@import "vuescroll/dist/vuescroll.css";
+
+// Styles Define
+.streammanagement {
+  padding-top: $navibar-height;
+  padding-left: $drawer-width;
+  display: inline-block;
+
+  .title {
+    @extend %component-title;
+  }
+
+  .contents {
+    width: 100%;
+
+    display: inline-block;
+    background-color: #f4f4f4;
+
+    @media screen and (min-width: 1310px) {
+      .block {
+        display: flex;
+        text-align: left;
+        > * {
+          flex: 1;
+        }
+      }
+    }
+    @media screen and (max-width: 1310px) {
+      .block {
+        > * {
+          display: block;
+          width: 100%;
+        }
+      }
+    }
+    .connector{
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      margin: 10px;
+    }
+    .sensor{
+      height: 500px;
+      .sensorList{
+        flex-basis: 40%;
+        display:inline-block;
+        text-align:center;
+        margin: 10px;
+      }
+      .searchinput {
+        display: block;
+        width:60%;
+        margin: 20px auto;
+        padding: 10px 45px;
+        font-size: 16px;
+        background-image: url();
+        background: white url("../images/search-icon.svg") no-repeat 15px center;
+        background-size: 15px 15px;
+        border: none;
+        border-radius: 5px;
+        box-shadow: rgba(50, 50, 93, 0.25) 0px 2px 5px -1px,
+        rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
+      }
+      .buttonGroup{
+        height: 400px;
+        overflow:auto;
+        .sensorButton{
+          width: 60%;
+          height: 50px;
+          display: inline-block;
+          background-color: white; 
+          border-color: grey;
+          color: grey;
+          margin: 5px;
+          text-align: center;
+          transition-duration: 0.2s;
+        }
+        .sensorButton:hover {
+          background-color: grey;
+          color: white;
+        }
+      }
+
+      .sensorSchema {
+        flex-basis: 60%;
+        display:inline-block;
+        text-align:center;
+        margin: 10px;
+      }
+      .schemaTable{
+        vertical-align: middle;
+      }
+
+    }
+    .query{
+      max-height: 500px;
+
+      .queryList{
+        text-align: center;
+        margin: 10px;
+        .queryTable{
+          max-height: 400px;
+          overflow:auto;
+        }
+        .queryCol{
+          display:inline-flex;
+          border: 1px solid $default-border-color;
+          border-radius: 5px;
+          margin: 3px;
+          padding: 5px;
+          justify-content: space-between;
+          word-break: break-all;
+          font-size: $default-font-size;
+          text-align: left;
+          .closeButton{
+            width: fit-content;
+            height: fit-content;
+            margin: 2px;
+          }
+        }
+        .queryEmpty{
+          width: 80%;
+          height: 50px;
+          display: inline-block;
+          text-align: center;
+          padding-top: 10px;
+          background-color: #f4f4f4;
+          border: 1px solid $default-border-color;
+          margin: 20px;
+        }
+      }
+    }
+    .user{
+      height: fit-content;
+      padding: 0px;
+      .userQuery{
+        display: inline-block;
+        padding: 0px;
+        margin: 10px;
+        .card-body{
+          display: inline-block;
+          width: 100%;
+          padding: 10px;
+          margin: 0px;
+        }
+        .input-group-text{
+          width: 180px;
+          min-height: 150px;
+          background-color: white;
+          border: none;
+        }
+        .form-control{
+          border: none;
+          border-left: 1px solid $default-border-color;
+          word-break: break-all;
+        }
+        textarea{
+          padding: 10px;
+        }
+        .functions{
+          display: block;
+          position: relative;
+          flex: 1 1 auto;
+          width: 1%;
+          border-left: 1px solid $default-border-color;
+          padding: 10px;
+          button{
+            width: 100%;
+            margin: 10px;
+            min-height: 60px;
+            background-color: white;
+            color: grey;
+          }
+          button:hover{
+            background-color: #f4f4f4;
+            color: rgb(68, 68, 68);
+          }
+        }
+      }
+    }
+    .querySubmitButton{
+      float: right;
+      margin: 10px;
+      width: 150px;
+    }
+    .streamModal{
+      width: 500px;
+
+    }
+    .functionModal{
+      display: inline-block;
+      padding: 20px;
+      .input-group-text{
+        width: 150px;
+        display: inline-block;
+        .prepend-first{
+          text-align: center;
+          font-size: $moduletitle-font-size;
+          margin: 3px;
+        }
+      }
+      .form-group{
+        display: inline-block;
+        width: 100%;
+      }
+      .sensor-selection{
+        height: 3rem;
+      }
+      .input-group{
+        width: 95%;
+        margin: 10px;
+      }
+      .checkboxTable{
+        width: 100%;
+      }
+      .radio-button{
+        .btn-secondary{
+          color: blue;
+        }
+      }
+      .geofence{
+        .geofence-title {
+          width: 200px;
+        }
+        .location-input-label:not(.first-index){
+          padding-left: 147px;
+          margin-right: 5px;
+          height: 47px;
+        }
+      }
+
+    }
+  }
+  
+}

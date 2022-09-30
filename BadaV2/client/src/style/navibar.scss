@@ -1,0 +1,51 @@
+@import "common";
+
+nav {
+  padding: 0;
+}
+
+.navbar-brand {
+  font-size: 20px;
+  padding: 0 0 0 10px; 
+  a {
+    color: $font-color-bright;
+    text-decoration: none;
+  }
+}
+.navibar {
+  display: block;
+  position: fixed;
+  width: 100%;
+  height: 44px;
+  z-index: 100;
+  line-height: 44px;
+
+  background-color: $main-theme-color;
+
+  #nav-menu {
+    margin-left: 36px;
+    height: 44px;
+    line-height: 44px;    
+
+    .left-contents {
+      font-weight: normal;
+      font-size: $default-font-size;
+      color: $font-color-mild;
+      
+      .nav-link {
+        margin-right: 10px;
+        text-decoration: none;
+        
+        &:hover {
+          color: $font-color-bright;
+        }
+      }
+    }
+  }
+
+  .logout-button-ok {
+    background-color: $item-color-first
+  }
+  
+}
+
