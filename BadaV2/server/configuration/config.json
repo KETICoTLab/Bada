@@ -2,9 +2,6 @@
   "jwt": {
     "secret": "badacafe00"
   },
-  "averageCount": {
-    "responseTime": 10
-  },
   "server": {
     "admin": {
       "id": "admin@bada.com"
@@ -42,6 +39,11 @@
       "user": "postgres",
       "password": "keti123",
       "database": "bada"
+    },
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "password": "keti123"
     }
   },
   "kafka": {
