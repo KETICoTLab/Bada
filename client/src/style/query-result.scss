@@ -1,0 +1,63 @@
+@import 'common';
+
+.weekly-count {
+  display: inline-block;
+  vertical-align: top;
+
+  width: 48%;
+  padding: 10px;
+  
+  text-align: left;
+
+  .contents {
+    min-width: 515px;
+    height: 350px;
+    padding: 10px;
+    text-align: center;
+    background-color: #fff;
+    border: 1px solid $default-border-color;
+    vertical-align: middle;
+
+    .title {
+      @extend %component-title;
+      margin-bottom: 10px;
+      float: left;
+    }
+
+    .duration {
+      width: 300px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      text-align: left;
+      float: right;
+
+      .input-area {
+        float: right;
+        font-size: 16px;
+        padding-right: 5px;
+      }
+      .btn-toolbar {
+        margin-bottom: 10px;
+        justify-content: flex-end;
+        
+        .btn {
+          border: none;
+          background-color: $button-color-first;
+          margin-left: 5px; 
+          height: 30px;
+          line-height: 15px;
+        }
+      }
+    }
+
+    .cin-chart {
+      display: inline-block;
+      width: 100%;
+      height: 90%;
+
+      margin-top: -15px;
+    }
+  }
+
+
+}

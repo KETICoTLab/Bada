@@ -1,0 +1,110 @@
+// Import
+@import "common";
+@import "vuescroll/dist/vuescroll.css";
+
+// Styles Define
+.querylistWindow {
+  padding-top: $navibar-height;
+  padding-left: $drawer-width;
+
+  .title {
+    @extend %component-title;
+  }
+
+  .contents {
+    width: 100%;
+
+    display: inline-block;
+    background-color: #f4f4f4;
+
+    @media screen and (min-width: 1310px) {
+      .block {
+        display: flex;
+        text-align: left;
+        > * {
+          flex: 1;
+        }
+      }
+    }
+    @media screen and (max-width: 1310px) {
+      .block {
+        > * {
+          display: block;
+          width: 100%;
+        }
+      }
+    }
+    .query{
+      max-height: 500px;
+      .queryList{
+        margin: 10px;
+        .queryTable{
+          max-height: 400px;
+          overflow:auto;
+          overflow-x:hidden;
+          padding: 0px;
+          display: inline-block;
+        }
+        .queryCol{
+          display:inline-flex;
+          border: 1px solid $default-border-color;
+          border-radius: 5px;
+          margin: 3px;
+          padding: 5px;
+          justify-content: space-between;
+          word-break: break-all;
+          font-size: $default-font-size;
+          text-align: left;
+          .queryDetailButton{
+            float: right;
+            max-width: 200px;
+            min-width: 130px;
+            margin: 2px;
+          }
+          .closeButton{
+            float: right;
+            width: 80%;
+            margin: 2px;
+            background-color: white;
+            color: black;
+            border: 2px solid black; /* Green */
+          }
+        }
+        .queryRow{
+          margin: auto;
+        }
+      }
+    }
+    .result{
+
+      max-height: 600px;
+      .queryResult{
+        display: inline-flex;
+        max-height: 550px;
+        overflow: auto;
+        margin: 10px;
+        .result-table{
+          min-width: 100%;
+          width: max-content;
+        }
+      }
+    }
+    
+    .querySubmitButton{
+      float: right;
+      margin: 10px;
+      width: 150px;
+    }
+    .queryDetailModal{
+      .modal-footer{
+        display: flex;
+        justify-content: space-between;
+      }
+    }
+    .streamModal{
+      width: 500px;
+
+    }
+  }
+  
+}

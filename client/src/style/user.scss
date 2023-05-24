@@ -1,0 +1,31 @@
+@import 'common';
+
+.user {
+  padding-top: $navibar-height;
+  padding-left: $drawer-width;
+
+  .title {
+    @extend %component-title;
+  }
+
+  .contents {
+    width: 100%;
+
+    display: inline-block;
+
+    .table-area {
+      padding: 10px;
+      overflow-y: auto;
+      font-size: $default-font-size;
+
+      .header-style {
+        background-color: $table-header-color-third;
+        color: $font-color-bright;
+        th {
+          font-weight: normal;
+        }
+      }
+    }
+  }
+
+}

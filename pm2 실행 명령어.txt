@@ -1,0 +1,3 @@
+D:\Bada
+
+pm2 start bada.js --watch --no-daemon

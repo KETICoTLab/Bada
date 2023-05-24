@@ -1,0 +1,44 @@
+// Import global variables defined file
+@import 'common';
+
+// Styles define
+.resource-table {
+  .contents {
+    background-color: transparent;
+    text-align: left;
+  
+    .info-table {
+      margin: 10px 0;
+      border-bottom: none;
+  
+      .row {
+        margin: 5px 0 0 0;
+        width: 100%;
+        line-height: 30px;
+      
+        border: 1px solid $default-border-color;
+        border-radius: 5px;
+      
+        .attribute-name {
+          padding: 0  5px;
+          background-color: #e9ecef;
+          vertical-align: middle;
+      
+          &.short {
+            border-left: 1px solid $default-border-color;
+            text-align: center;
+          }
+        }
+      }
+    }
+
+    .vjs__tree {
+      font-family: BadaFontsStack;
+    
+      span[class^="vjs__value__"] {
+        color: $font-color-dark;
+      }
+    }
+  }
+}
+

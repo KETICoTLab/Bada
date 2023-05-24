@@ -1,0 +1,123 @@
+@import 'common';
+
+.signup {
+  height: 100vh;
+  
+  .contents {
+    height: 100%;
+    background-image: url('../images/background_main.jpg');
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+
+    .title {
+      padding-top: 80px;
+      padding-left: 80px;
+      width: 100%;
+      vertical-align: middle;
+      text-align: left;
+      color: $font-color-bright;
+
+      .text {
+        font-size: 60px;
+
+        sup {
+          font-weight: 500;
+          font-size: 50px;
+          font-family: 'Dancing Script', cursive;
+        }
+      }
+    }
+
+    .input {
+      margin: 50px auto 0 auto;
+      width: 380px;
+      height: 40vh;
+      border-radius: 10px;
+      background-color: rgba(255,255,255,0.5);
+
+      p {
+        padding-top: 10px;
+        font-size: 40px;
+        text-align: center;
+        color: $font-color-bright;
+      }
+
+      .element {
+        position: relative;
+        margin-top: 30px;
+        opacity: 1;
+
+        + .element {
+          margin-top: 35px;
+        }
+
+        .form-label {
+          position: absolute;
+          left: 10%;
+          top: 5px;
+          color: $font-color-bright;
+          z-index: 10;
+          transition: transform 150ms ease-out, font-size 150ms ease-out;
+        }
+
+        &.focused .form-label {
+          transform: translateY(-125%);
+          font-size: .75em;
+        }
+
+        input {
+          position: relative;
+          width: 80%;
+          height: 35px;
+          outline: 0;
+          border: 0;
+          box-shadow: 0 1px 0 0 #e5e5e5;
+          transition: box-shadow 150ms ease-out;
+          background-color: transparent;
+          border-radius: 0;
+          color: $font-color-dark;
+          caret-color: $font-color-bright;
+        }
+
+        .warning-text {
+          margin-top: 5px;
+          padding-left: 40px;
+
+          p {
+            text-align: left;
+            font-size: $text-font-size;
+            
+            &.not{
+              color: red;
+            }
+          }
+        }
+      }
+
+      
+      .button-group {
+        margin-top: 25%;
+        .button-signup {
+          width: 100px;
+          background-color: $main-theme-color;
+          border: none;
+          
+          &:hover {
+            box-shadow: 0 0 8px 2px $main-theme-color;
+          }
+        }
+    
+        .button-cancel {
+          width: 100px;
+          color: $main-theme-color;
+          background-color: $default-background-color-inner;
+          border: none;
+
+          &:hover {
+            box-shadow: 0 0 8px 2px $main-theme-color;
+          }
+        }
+      }
+    }
+  }
+}

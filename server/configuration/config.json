@@ -1,0 +1,62 @@
+{
+  "jwt": {
+    "secret": "badacafe00"
+  },
+  "server": {
+    "admin": {
+      "id": "admin@bada.com"
+    },
+    "port": "7576"
+  },
+  "resource": {
+    "limit": 5
+  },
+  "db": {
+    "mysql": {
+      "host": "localhost",
+      "port": 3306,
+      "user": "root",
+      "password": "keti123",
+      "database": "bada",
+      "connectionLimit": 100,
+      "waitForConnections": true,
+      "debug": false,
+      "acquireTimeout": 50000,
+      "queueLimit": 0,
+      "multipleStatements": true
+    },
+    "influx": {
+      "host": "localhost",
+      "port": 8086,
+      "database": "BADA_DATA",
+      "user": "admin",
+      "password": "keti123",
+      "precision": "rc3339"
+    },
+    "postgres": {
+      "host": "localhost",
+      "port": 5432,
+      "user": "postgres",
+      "password": "keti123",
+      "database": "bada"
+    },
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "password": "keti123"
+    }
+  },
+  "kafka": {
+    "host": "192.168.140.124",
+    "port": 9092
+  },
+  "mobius": {
+    "host": "localhost",
+    "port": 7579,
+    "cb": "Mobius"
+  },
+  "ksqldb": {
+    "host": "192.168.140.124",
+    "port": 8090
+  }
+}
