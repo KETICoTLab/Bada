@@ -37,8 +37,8 @@
           <b-table fluid striped bordered sticky-header show-empty v-else :items="queryResults" class="result-table"></b-table>
         </b-card>
       </div>
-      <div class="block graph">
-        <query-result></query-result>
+      <div class="block graph" v-show="queryResultShow">
+        <query-result v-bind:queryData="queryResults" v-bind:showChart="queryResultShow"></query-result>
       </div>
       
       <b-modal :title="modal.title" ref="modal" 

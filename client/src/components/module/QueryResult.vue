@@ -4,11 +4,6 @@
       <!-- <div class=""></div> -->
       <div class="title">Query Result Chart</div>
       <div class="duration">
-        <b-button-toolbar>
-            <b-button v-on:click='setDuration("week")'>A Week</b-button>
-            <b-button @click='setDuration("2weeks")'>2 Weeks</b-button>
-            <b-button @click='setDuration("month")'>A Month</b-button>
-        </b-button-toolbar>
         <div class="input-area">
           <div>
             {{duration.start_date}} ~ {{duration.end_date}}

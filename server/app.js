@@ -24,8 +24,8 @@ const system = require("./src/system-usage");
 const responseTime = require("./src/response-time");
 const database = require("./src/database");
 const cinSync = require("./src/cin-sync");
-const { mysql } = require("./src/database");
 
+const request = require("request");
 const redisClient = redis.createClient(config.db.redis);
 
 let badaPort = config.server.port;
@@ -72,7 +72,6 @@ database.mysql.create(function (rsc) {
         /**
          * Create Raw Sink Connector (Timeseries, Postgresql) via KSQLDB
          */
-        var request = require("request");
         var options = {
           method: "POST",
           url: `http://${config.ksqldb.host}:${config.ksqldb.port}/ksql`,

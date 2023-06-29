@@ -9,7 +9,11 @@ export default {
       connectorStatus: { fields: [], item: [] },
       schema: [],
       sensorlist: ["sensor1", "sensor2"],
-      spatialsensor: { redisdata: [], ae: [], cnt: [] },
+      spatialsensor: {
+        redisdata: [],
+        ae: [],
+        cnt: []
+      },
       searchinput: "",
       parsedsensor: {
         data: [["Application Entity", "Container"]],
@@ -23,7 +27,7 @@ export default {
         height: 300
       },
       aeList: {
-        data: [["Application Entity"]],
+        data: [],
         header: "row",
         showCheck: true,
         enableSearch: true,
@@ -161,8 +165,12 @@ export default {
           ) {
             return;
           } else {
-            for (let i = 0; i < result.data.length; i++) {
-              data = result.data[i];
+            console.log(result.data)
+            let newResult = result.data.map(({ className, ...rest }) => rest);
+            console.log(newResult)
+
+            for (let i = 0; i < newResult.length; i++) {
+              data = newResult[i];
               state = data.state.split(" ")[0];
               if (state == "RUNNING") {
                 data["_cellVariants"] = { state: "success" };
@@ -173,7 +181,7 @@ export default {
               }
             }
             this.connector = connector;
-            this.connectorFields = Object.keys(result.data[0]);
+            this.connectorFields = Object.keys(newResult[0]);
           }
         })
         .catch(err => {
@@ -337,6 +345,7 @@ export default {
         });
         this.spatialsensor.cnt = cntList;
       }
+
     },
     showQueryModal(data) {
       console.log(data);
@@ -518,12 +527,9 @@ export default {
         });
       } else if (this.selected === "timesync") {
         submitData = this.timesync;
-        console.log("submitData : ", submitData);
 
         selectedData = { ...submitData };
         selectedData.sensor = [this.parsedsensor.data[0]];
-
-        console.log("selectedData : ", selectedData);
 
         this.parsedsensor.data.forEach(element => {
           console.log(element[0], submitData.sensor[1]);
@@ -531,7 +537,7 @@ export default {
             selectedData.sensor.push(element);
           }
         });
-        console.log("selectedData : ", selectedData);
+
         this.checkSchema(selectedData.sensor).then(schema => {
           if (schema !== false) {
             console.log(schema);
@@ -558,6 +564,10 @@ export default {
                 // this.$bvModal.hide("modal-prevent-closing");
                 this.showModal(modal.title, modal.content);
               });
+          } else {
+            modal.title = "fail";
+            modal.content = "Select sensors only have same schema";
+            this.showModal("fail", "Select sensors only have same schema");
           }
         });
       } else if (this.selected === "windowAggregation") {
@@ -639,6 +649,7 @@ export default {
                 this.responseMessage = "Result";
                 modal.title = "Fail";
                 modal.content = "Create sensor table first";
+                this.showModal("fail", "Create sensor table first");
               } else {
                 //exist KSQLDB Table
                 schemas.push(JSON.stringify(result.data));

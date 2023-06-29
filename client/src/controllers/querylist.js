@@ -9,6 +9,7 @@ export default {
       queryData: [],
       queryDetails: {},
       queryResults: [],
+      queryResultShow:false,
       columnList: [],
       variants: Util.variants,
       modal: {
@@ -22,6 +23,7 @@ export default {
       }
     };
   },
+  
   methods: {
     getQueryList() {
       this.$http
@@ -99,7 +101,12 @@ export default {
       }
     },
     showQueryResults(data) {
-      console.log(data);
+      console.log("this is query data : ", data);
+
+      /**
+       * For Query Result Table
+       */
+
       let queryID = data.queryID;
       if (queryID in this.queryDetails) {
         let sinkTable = JSON.parse(this.queryDetails[queryID]).sinks[0];
@@ -122,10 +129,20 @@ export default {
             })
             this.queryResults = result.data;
           });
+        
       }
-      // get query details
-      // select ksqldb data
-      // data to bootstrap table
+      /**
+       * For Query Result Graph
+       */
+      let queryName = data.queryName;
+      if (queryName.includes("AnomalyDetection") || queryName.includes("WindowAggregation")) {
+        this.queryResultShow = true;
+
+      } else {
+        this.queryResultShow = false;
+      }
+
+
     },
     showModal(status, data) {
       if (status === "fail") {

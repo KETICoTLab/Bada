@@ -36,7 +36,7 @@ import DailyCount from "@/components/module/DailyCount";
 import ResourceList from "@/components/module/ResourceList";
 import ResourceTable from "@/components/module/ResourceTable";
 import ExportExcel from "@/components/module/ExportExcel";
-import QueryResult from "@/components/module/QueryResult";
+import QueryResult from "@/components/module/QueryResult"
 // import MatrixChart from '@/components/module/MatrixChart'
 // import IntensificationFactor from '@/components/module/IntensificationFactor'
 // import CinMonitor from '@/components/module/CinMonitor'
@@ -65,7 +65,7 @@ Vue.component("compact-list", CompactList);
 Vue.component("resource-list", ResourceList);
 Vue.component("resource-table", ResourceTable);
 Vue.component("export-excel", ExportExcel);
-Vue.component("query-result", QueryResult);
+Vue.component("query-result", QueryResult)
 // Vue.component('matrix-chart', MatrixChart);
 // Vue.component('intensification-factor', IntensificationFactor);
 // Vue.component('cin-monitor', CinMonitor);

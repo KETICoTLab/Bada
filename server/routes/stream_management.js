@@ -379,6 +379,7 @@ router.post("/createSensor", (req, res) => {
       let sql = `create stream "${sensorAe}_${sensorCnt}" (`;
       rawColumn.forEach((key, index) => {
         if (result[0][key] !== null) {
+          if (index !== 0) sql += ", ";
           let dataType = typeof result[0][key] === "number" ? "Double" : "String";
 
           if (key.includes(`${sensorAe}.${sensorCnt}`)) {
@@ -386,9 +387,6 @@ router.post("/createSensor", (req, res) => {
           } else {
             sql += `"${key}" ${dataType}`;
           }
-
-          
-          if (index < rawColumn.length - 1) sql += ", ";
         }
       });
       sql += `) with (kafka_topic = 'refine.${sensorAe}.${sensorCnt}', value_format = 'json', partitions = 1);`;
@@ -650,7 +648,6 @@ router.get("/queryResults", ((req, res) => {
   console.log("Get query result - sink table : " ,sinkTable);
   options.path = "/query";
   let sql = `select * from "${sinkTable}" limit 10;`;
-  
 
   let request = http.request(options, function (response) {
     let data = "";
@@ -932,7 +929,7 @@ router.post("/function/grouping", (req, res) => {
   sql += `) WITH (kafka_topic='GP_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON'); `;
   sensors.forEach((element) => {
     sensorName = `${element[0]}_${element[1]}`;
-    sql += `INSERT INTO "${groupName}" SELECT * FROM ${sensorName}; `;
+    sql += `INSERT INTO "${groupName}" SELECT * FROM "${sensorName}"; `;
   });
 
   console.log(sql);
@@ -953,8 +950,8 @@ router.post("/function/grouping", (req, res) => {
       //CREATE INFLUXDB CONNECTOR with
       createInfluxdbConnector(`GP_${groupName}_${date}`);
       // Save Redis Data
-      if (resultData[0].commandStatus) {
-        queryID = resultData[0].commandStatus.queryId;
+      if (resultData[1].commandStatus) {
+        queryID = resultData[1].commandStatus.queryId;
         queryName = `Grouping_${groupName}`;
         redisClient.hmset("query", queryID, queryName);
       }
@@ -987,75 +984,129 @@ INSERT INTO grouping_sensors SELECT 'ae_sensor2' AS SENSORNAME, * FROM ae_sensor
 INSERT INTO grouping_sensors SELECT 'ae_sensor3' AS SENSORNAME, * FROM ae_sensor3;
  */
 router.post("/function/timesync", (req, res) => {
-  console.log("create query : ", data, req.body.schema);
-  let { sensors, groupName } = req.body.data;
+  // console.log("create query : ", req.body);
+  let { sensor, groupName } = req.body.data;
   let schema = JSON.parse(req.body.schema);
   let columns = Object.keys(schema);
-  let sensorName = "";
+  
+  let deleteIdx = columns.indexOf("APPLICATIONENTITY");
+  if(deleteIdx != -1) columns.splice(deleteIdx, 1);
+  deleteIdx = columns.indexOf("CONTAINER");
+  if (deleteIdx != -1) columns.splice(deleteIdx, 1);
+  
+  let numberOfSensor = sensor.length;
   options.path = "/ksql";
   let date = getCurrentDate();
 
   let queryID = "";
   let queryName = "";
 
-  let sql = `CREATE STREAM "${groupName}" (`;
-  columns.forEach((key, index) => {
-    sql += `${key} ${schema[key]}`;
-    if (index < columns.length - 1) {
-      sql += ", ";
+  /**
+   * create grouping stream
+   * create stream DO_three as select a.AE, from_unixtime(a.rowtime), a.container, b.container, a.temperature, a.humidity, b.gps, c.carbon from temp_sensor_stream a join location_sensor_stream b within 2 hours on a.AE = b.AE join carbon_sensor_stream c within 2 hours on a.AE=c.AE emit changes;
+   */
+
+  let unionSql = `CREATE STREAM "TS_UNION_${groupName}_${date}" WITH (kafka_topic='TS_UNION_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+    `as select a.applicationentity as applicationentity, from_unixtime(a.rowtime)`;
+  for (let n = 0; n < numberOfSensor; n++) {
+    // unionSql += `, `
+    // unionSql += `${sensorAlias}.container`;
+    let sensorAlias = String.fromCharCode(n + 97);
+
+    for (let column of columns) {
+      unionSql += `, ${sensorAlias}.${column}`;
+
     }
-  });
-    //   sql = `CREATE TABLE "TS_${sensorAe}_${sensorCnt}_${date}"
-    // WITH (kafka_topic='TS_${sensorAe}_${sensorCnt}_${date}', partitions=1, value_format='JSON', key_format='JSON') AS SELECT
-    // ApplicationEntity, Container, COUNT(*) AS COUNT, ${aggregationFunction}(${column})
-    // FROM "${sensorAe}_${sensorCnt}"
-    // WINDOW TUMBLING(SIZE ${data.time} SECONDS)
-    // GROUP BY ApplicationEntity, Container;`;
+  }
+  unionSql += ` from "${sensor[0][0]}_${sensor[0][1]}" a`;
+
+  for (let n = 1; n < numberOfSensor; n++) {
+    let streamName = `"${sensor[n][0]}_${sensor[n][1]}"`;
+    let sensorAlias = String.fromCharCode(n+97)
+    unionSql += ` join ${streamName} ${sensorAlias} within 2 hours on a.applicationentity = ${sensorAlias}.applicationentity`;
+    if (n == numberOfSensor - 1) {
+      unionSql += ` emit changes;`
+    }
+  }
   
-  sql += `) WITH (kafka_topic='TS_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON'); `;
-  sensors.forEach((element) => {
-    sensorName = `${element[0]}_${element[1]}`;
-    sql += `INSERT INTO "${groupName}" SELECT * FROM ${sensorName}; `;
-  });
+  console.log(unionSql);
+
+  /**
+   * create tumbling table get latest data
+   * select A_AE, from_unixtime(windowstart) as timestamp, latest_by_offset(temperature) as temperature, latest_by_offset(gps) as gps, latest_by_offset(carbon) as carbon from do_three window tumbling (size 10 minutes) group by a_ae emit changes;
+   */
+
+  let sql = `CREATE TABLE "TS_${groupName}_${date}" WITH (kafka_topic='TS_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+    ` as select applicationentity, from_unixtime(windowstart) as timestamp`;
+  for (let n = 0; n < numberOfSensor; n++){
+    let sensorAlias = String.fromCharCode(n + 97);
+    for (let column of columns) {
+      sql += `, latest_by_offset(${sensorAlias}_${column}) as ${sensor[n][1]}_${column}`;
+    }
+  }
+
+  sql += ` from "TS_UNION_${groupName}_${date}" window tumbling (size 10 minutes) group by applicationentity emit changes;`
+
 
   console.log(sql);
 
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
+  let unionRequest = http.request(options, function (unionResponse) {
+    let unionData = "";
 
-    // console.log("queryData : ", queryData.queryString);
-    response.on("data", function (chunk) {
-      data += chunk;
+    unionResponse.on("data", function (unionChunk) {
+      unionData += unionChunk;
     });
 
-    response.on("end", function (chunk) {
-      console.log(data);
-      resultData = JSON.parse(data);
+    unionResponse.on("end", function () {
+      console.log(unionData);
+      
+      let request = http.request(options, function (response) {
+        let data = "";
+        let resultData = "";
+        
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+        response.on("end", () => {
+          resultData = JSON.parse(data);
 
-      //CREATE INFLUXDB CONNECTOR with
-      createInfluxdbConnector(`TS_${groupName}_${date}`);
-      // Save Redis Data
-      if (resultData[0].commandStatus) {
-        queryID = resultData[0].commandStatus.queryId;
-        queryName = `Timesync_${groupName}`;
-        redisClient.hmset("query", queryID, queryName);
-      }
-      res.status(response.statusCode).json(resultData);
+          //CREATE INFLUXDB CONNECTOR with
+          createInfluxdbConnector(`TS_${groupName}_${date}`);
+          // Save Redis Data
+          if (resultData[0].commandStatus) {
+            queryID = resultData[0].commandStatus.queryId;
+            queryName = `Timesync_${groupName}`;
+            redisClient.hmset("query", queryID, queryName);
+          }
+          res.status(response.statusCode).json(resultData);
+        })
+        response.on("error", function (error) {
+          console.error(error);
+          res.status(400).send(error);
+        })
+      })
+
+      let postData = JSON.stringify({
+        ksql: `${sql}`,
+        streamsProperties: {},
+      });
+      request.write(postData);
+      request.end();
+
     });
 
-    response.on("error", function (error) {
+    unionResponse.on("error", function (error) {
       console.error(error);
       res.status(400).send(error);
     });
   });
 
-  var postData = JSON.stringify({
-    ksql: `${sql}`,
+  let unionPost = JSON.stringify({
+    ksql: `${unionSql}`,
     streamsProperties: {},
   });
-  request.write(postData);
-  request.end();
+  unionRequest.write(unionPost);
+  unionRequest.end();
 });
 
 /**

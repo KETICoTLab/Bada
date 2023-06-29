@@ -110,15 +110,14 @@ public class InfluxDBSinkTask extends SinkTask {
       String recordKey = record.key().toString();
       String[] pi = recordKey.split("/");
       String ae = pi[2], cnt = pi[3];
-      String measurement = ae;
 
-      Boolean errorFlag = false;
+      boolean errorFlag = false;
 
 
       final Map<String, String> tags = new HashMap<String, String>();
       tags.put("Container", cnt);
       final long time = record.timestamp();
-      PointKey key = PointKey.of(measurement, time, tags);
+      PointKey key = PointKey.of(ae, time, tags);
       PointKey errorKey = PointKey.of("error", time, tags);
 
       String path = String.format("/%s/%s", ae, cnt);

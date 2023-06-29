@@ -194,6 +194,7 @@
           <b-form-input v-model="grouping.groupName" :state="fieldState" required></b-form-input>
         </b-input-group>
 
+
         <b-input-group>
           <vue-table-dynamic 
             :params="parsedsensor" 
