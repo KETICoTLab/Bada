@@ -167,42 +167,6 @@
             <b-form-input v-model="anomalyDetection.count" :state="fieldState" type='number' required></b-form-input>
           </b-input-group>
 
-        <!-- <b-input-group>
-          <b-input-group-text slot="prepend" >
-            <div class="prepend-first">저장 위치</div>
-          </b-input-group-text>
-          <b-form-radio-group 
-          class = "radio-button"
-          v-model="anomalyDetection.storageMethod" 
-          size='lg' 
-          :options="anomalyDetection.option.storageOption" 
-          buttons 
-          required>
-          </b-form-radio-group>
-        </b-input-group> -->
-      </b-form-group>
-
-      <b-form-group
-        v-if="selected === 'grouping'"
-        invalid-feedback="required field"
-        :state="fieldState"
-      >
-        <b-input-group>
-          <b-input-group-text slot="prepend">
-            <div class="prepend-first">그룹 이름</div>
-          </b-input-group-text>
-          <b-form-input v-model="grouping.groupName" :state="fieldState" required></b-form-input>
-        </b-input-group>
-
-
-        <b-input-group>
-          <vue-table-dynamic 
-            :params="parsedsensor" 
-            @selection-change="onGroupSelectionChange"
-            ref="table">
-          </vue-table-dynamic>
-        </b-input-group>
-
       </b-form-group>
 
       <b-form-group

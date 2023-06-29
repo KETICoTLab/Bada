@@ -23,7 +23,6 @@ import Profile from "@/components/Profile";
 import Register from "@/components/Register";
 import User from "@/components/User";
 import Configuration from "@/components/Configuration";
-import StreamManagement from "@/components/StreamManagement";
 import Query from "@/components/Query";
 import Querylist from "@/components/Querylist"
 // import Bookmark from '@/components/Bookmark'
@@ -165,7 +164,6 @@ export default new Router({
         { path: "user", component: User },
         { path: "profile", component: Profile },
         { path: "configuration", component: Configuration },
-        { path: "streammanagement", component: StreamManagement },
         { path: "query", component: Query },
         { path : "querylist", component: Querylist}
         // { path: 'bookmark', component: Bookmark },

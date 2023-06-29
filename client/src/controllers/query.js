@@ -6,7 +6,6 @@ export default {
     return {
       connectorFields: [],
       connector: [],
-      connectorStatus: { fields: [], item: [] },
       schema: [],
       sensorlist: ["sensor1", "sensor2"],
       spatialsensor: {
@@ -44,7 +43,6 @@ export default {
         { value: "anomalyDetection", text: "이상 상황 감지" },
         { value: "windowAggregation", text: "기간별 디바이스 전달" },
         { value: "geoFence", text: "geofencing" },
-        { value: "grouping", text: "디바이스 그룹핑" },
         { value: "timesync", text: "디바이스 시간 동기화" }
       ],
       selected: null,
@@ -61,7 +59,6 @@ export default {
           storageOption: ["Timeseries", "Spatio", "Http"]
         }
       },
-      grouping: { sensor: [], groupName: null },
       timesync: { sensor: [], groupName: null },
       windowAggregation: {
         sensor: null,
@@ -182,25 +179,6 @@ export default {
             }
             this.connector = connector;
             this.connectorFields = Object.keys(newResult[0]);
-          }
-        })
-        .catch(err => {
-          console.log(err);
-        });
-    },
-    getConnectorStatus(connectorName) {
-      this.$http
-        .get("/streammanagement/connectorStatus" + connectorName)
-        .then(result => {
-          if (
-            result.data == null ||
-            result.data == undefined ||
-            result.data == ""
-          ) {
-            return;
-          } else {
-            this.connectorStatus = result.data;
-            return result.data;
           }
         })
         .catch(err => {
@@ -351,15 +329,13 @@ export default {
       console.log(data);
       if (data === "anomalyDetection") {
         this.modal.title = "이상 상황 여부 탐색";
-      } else if (data === "grouping") {
-        this.modal.title = "디바이스 그룹핑";
-      } else if (data === "timesync") {
-        this.modal.title = "디바이스 시간 동기화";
       } else if (data === "windowAggregation") {
         this.modal.title = "기간별 디바이스 전달";
       } else if (data === "geoFence") {
         this.getRedisStorage();
         this.modal.title = "geofence 정보 입력";
+      } else if (data === "timesync") {
+        this.modal.title = "디바이스 시간 동기화";
       }
       this.selected = data;
       this.modal.contents = data;
@@ -427,8 +403,6 @@ export default {
       this.anomalyDetection.count = null;
       this.anomalyDetection.storageMethod = null;
 
-      this.grouping.sensor = [];
-      this.grouping.groupName = null;
       this.timesync.groupName = null;
       this.timesync.sensor = [];
 
@@ -491,40 +465,6 @@ export default {
             // this.$bvModal.hide("modal-prevent-closing");
             this.showModal(modal.title, modal.content);
           });
-      } else if (this.selected === "grouping") {
-        submitData = this.grouping;
-        this.checkSchema(this.grouping.sensor).then(schema => {
-          if (schema !== false) {
-            console.log(submitData);
-            this.$http
-              .post("/streammanagement/function/grouping", {
-                data: submitData,
-                schema: schema
-              })
-              .then(result => {
-                console.log("Create Query : ", result.data);
-                this.responseMessage = "Result";
-                modal.title = "Success";
-                modal.content = result.data;
-              })
-              .then(() => {
-                // this.$bvModal.hide("modal-prevent-closing");
-                this.showModal(modal.title, modal.content);
-              })
-              .catch(err => {
-                modal.title = "fail";
-                modal.content = err.response.data;
-                console.log("error", err);
-                this.responseMessage = err.response.status;
-                // this.$bvModal.hide("modal-prevent-closing");
-                this.showModal(modal.title, modal.content);
-              });
-          } else {
-            modal.title = "fail";
-            modal.content = "Select sensors only have same schema";
-            this.showModal("fail", "Select sensors only have same schema");
-          }
-        });
       } else if (this.selected === "timesync") {
         submitData = this.timesync;
 
