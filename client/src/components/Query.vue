@@ -18,7 +18,8 @@
             <vue-scroll>
             <div class="buttonGroup" >
               <div v-for="(sensorName, index) in filteredList()" :key="index">
-                <b-button class="sensorButton" @click="getSchema(sensorName)"> {{sensorName}} </b-button>
+                <b-button v-if="sensorName.type == 'timeseries'" class="sensorButton" @click="getSchema(sensorName)"> {{sensorName.ae}}_{{sensorName.cnt}} </b-button>
+                <b-button v-if="sensorName.type == 'spatial'" class="sensorButton" @click="getSchema(sensorName)"> spatial_{{sensorName.ae}}_{{sensorName.cnt}} </b-button>
               </div>
               <div class="item error" v-if="searchinput&&!filteredList().length">
                 <p>No results found!</p>
@@ -29,7 +30,8 @@
           <b-card title="Sensor Schema" class="sensorSchema">
               <div class="schemaTable">
                 <b-table show-empty fixed bordered striped small responsive stacked :items="schema"></b-table>
-                <b-button v-show="createTableTag" @click="createSensorTable()">Create Sensor Table - {{currentSensor}} </b-button>
+                <b-button v-if="currentSensor.type == 'timeseries'" v-show="createTableTag" @click="createSensorTable()">Create sensor stream - {{currentSensor.ae}}_{{currentSensor.cnt}} </b-button>
+                <b-button v-if="currentSensor.type == 'spatial'" v-show="createTableTag" @click="createSensorTable()">Create sensor stream - spatial_{{currentSensor.ae}}_{{currentSensor.cnt}} </b-button>
               </div>
           </b-card>
       </div>
@@ -40,8 +42,7 @@
                 <b-input-group-text slot="prepend">
                   <div class="prepend-first title">Stream Query</div>
                 </b-input-group-text>
-                <b-form-textarea v-model="userQuery" type="text" placeholder="쿼리에 사용되는 모든 센서는 테이블이 생성되어 있어야 합니다.
-센서 테이블 이름은 {YOUR_AE}_{YOUR_CNT} 혹은 spatial 로 입력해주세요" >
+                <b-form-textarea v-model="userQuery" type="text" placeholder="쿼리에 사용되는 모든 센서는 스트림이 생성되어 있어야 합니다." >
                 </b-form-textarea>
               </b-input-group>
               <b-button class="querySubmitButton" type="submit" @click="submitQuery(userQuery)">Submit</b-button>
@@ -111,13 +112,14 @@
         >
         <b-input-group>
           <b-input-group-text slot="prepend" >
-            <div class="prepend-first">센서 선택</div>
+            <div class="prepend-first">쿼리 이름</div>
           </b-input-group-text>
-          <b-form-select class="sensor-selection" v-model="anomalyDetection.sensor" :options="sensorlist" :state="fieldState" @change="selectSensor" required>
-            <template slot="first">
-              <option :value="null" disabled>-- Select Sensor --</option>
-            </template>
-          </b-form-select>
+            <b-form-input v-model="anomalyDetection.queryName" :state="fieldState" required></b-form-input>
+          <vue-table-dynamic 
+            :params="timeseriesSensor" 
+            @selection-change="onADSelectionChange"
+            ref="table">
+          </vue-table-dynamic>
         </b-input-group>
 
         <b-input-group>
@@ -129,6 +131,7 @@
               <option :value="null" disabled>-- Select Data Column --</option>
             </template>
           </b-form-select>
+
         </b-input-group>
 
         <b-input-group>
@@ -157,7 +160,7 @@
             <b-input-group-text slot="prepend">
               <div class="prepend-first">비교값</div>
             </b-input-group-text>
-            <b-form-input v-model="anomalyDetection.comparisonValue" :state="fieldState" type='number' required></b-form-input>
+            <b-form-input v-model="anomalyDetection.comparisonValue" :state="fieldState" required></b-form-input>
           </b-input-group>
 
           <b-input-group>
@@ -170,42 +173,20 @@
       </b-form-group>
 
       <b-form-group
-        v-if="selected === 'timesync'"
-        invalid-feedback="required field"
-        :state="fieldState"
-      >
-        <b-input-group>
-          <b-input-group-text slot="prepend">
-            <div class="prepend-first">그룹 이름</div>
-          </b-input-group-text>
-          <b-form-input v-model="timesync.groupName" :state="fieldState" required></b-form-input>
-        </b-input-group>
-
-        <b-input-group>
-          <vue-table-dynamic 
-            :params="aeList" 
-            @selection-change="onTimeSelectionChange"
-            ref="table">
-          </vue-table-dynamic>
-        </b-input-group>
-
-      </b-form-group>
-
-
-      <b-form-group
         v-if="selected === 'windowAggregation'"
         invalid-feedback="required field"
         :state="fieldState">
 
         <b-input-group>
           <b-input-group-text slot="prepend" >
-            <div class="prepend-first">센서 선택</div>
+            <div class="prepend-first">쿼리 이름</div>
           </b-input-group-text>
-          <b-form-select class="sensor-selection" v-model="windowAggregation.sensor" :options="sensorlist" @change="selectSensor" required>
-            <template slot="first">
-              <option :value="null" disabled>-- Select Sensor --</option>
-            </template>
-          </b-form-select>
+            <b-form-input v-model="windowAggregation.queryName" :state="fieldState" required></b-form-input>
+          <vue-table-dynamic 
+            :params="timeseriesSensor" 
+            @selection-change="onWASelectionChange"
+            ref="table">
+          </vue-table-dynamic>
         </b-input-group>
 
         <b-input-group>
@@ -240,56 +221,30 @@
             </b-form-radio-group>
           </b-input-group>
 
-          <!-- <b-input-group>
-            <b-input-group-text slot="prepend" >
-              <div class="prepend-first">저장 위치</div>
-            </b-input-group-text>
-            <b-form-radio-group 
-            class = "radio-button"
-            v-model="windowAggregation.storageMethod" 
-            size='lg' 
-            :options="windowAggregation.option.storageOption" 
-            buttons 
-            required>
-            </b-form-radio-group>
-          </b-input-group> -->
-
         </b-form-group>
 
-          <b-form-group
+        <b-form-group
           v-if="selected === 'geoFence'"
           class="geofence"
           invalid-feedback="required field"
           :state="fieldState">
 
-        <b-input-group>
-          <b-input-group-text slot="prepend" class="geofence">
-            <div class="prepend-first">센서 선택</div>
-          </b-input-group-text>
-          <b-form-select class="sensor-selection" v-model="geoFence.ae" :options="spatialsensor.ae" :state="fieldState" @change="selectAE" required>
-            <template slot="first">
-              <option :value="null" disabled>-- Select AE --</option>
-            </template>
-          </b-form-select>
-          <b-form-select class="sensor-selection" v-model="geoFence.cnt" :options="spatialsensor.cnt" :state="fieldState" required>
-            <template slot="first">
-              <option :value="null" disabled>-- Select Container --</option>
-            </template>
-          </b-form-select>
-        </b-input-group>
-
           <b-input-group>
             <b-input-group-text slot="prepend" class="geofence">
-              <div class="prepend-first">geofence(polygon) 이름</div>
+              <div class="prepend-first">geoFence(Polygon) 이름</div>
             </b-input-group-text>
-            <b-form-input v-model="geoFence.fenceName" :state="fieldState" required></b-form-input>
+            <b-form-input v-model="geoFence.queryName" :state="fieldState" required></b-form-input>
+            <vue-table-dynamic 
+              :params="spatialSensor" 
+              @selection-change="onGFSelectionChange"
+              ref="table">
+            </vue-table-dynamic>
           </b-input-group>
-
 
           <div v-for="(item, index) in geoFence.polygon" :key="item.index">
             <b-input-group class="location-input-label" :class=" {'first-index': index==0}">
               <b-input-group-text slot="prepend" v-if="index==0" class="geofence">
-                <div class="prepend-first">location data</div>
+                <div class="prepend-first">Vertex data</div>
               </b-input-group-text>
               <!-- <b-form-input v-model="geoFence.polygon[index]" type="text" placeholder="Add latitude and longitude"></b-form-input> -->
               <b-form-input v-model="geoFence.polygon[index].lat" type="text" placeholder="Enter latitude" required></b-form-input>
@@ -305,6 +260,91 @@
 
         </b-form-group>
 
+        
+      <b-form-group
+        v-if="selected === 'timesync-join'"
+        class="timesync"
+        invalid-feedback="required field"
+        :state="fieldState">
+        <b-input-group>
+          <b-input-group-text slot="prepend">
+            <div class="prepend-first">그룹 이름</div>
+          </b-input-group-text>
+          <b-form-input v-model="timesync.groupName" :state="fieldState" required></b-form-input>
+          <div v-show="timesync.ae" class="ts-alert">
+            <b-alert show variant="secondary">
+                <span> selected Sensor : {{timesync.ae}} </span>
+                <b-button variant="outline-secondary" v-on:click="onTSReselectAE" class="ts-button"> reselect </b-button> 
+            </b-alert>
+          </div>
+        </b-input-group>
+
+          <b-input-group v-show="!timesync.ae">
+            <b-input-group-text slot="prepend">
+              <div class="prepend-first">Select AE </div>
+            </b-input-group-text>
+            <vue-table-dynamic 
+              :params="aeList" 
+              @select="onTSSelect"
+              ref="ae-table">
+            </vue-table-dynamic>
+          </b-input-group>
+
+          <b-input-group v-show="timesync.ae">
+            <b-input-group-text slot="prepend">
+              <div class="prepend-first">Select CNT</div>
+            </b-input-group-text>
+            <vue-table-dynamic 
+              :params="cntList" 
+              @selection-change="onTSSelectionChange"
+              ref="cnt-table">
+            </vue-table-dynamic>
+            <p> * container를 선택하지 않으면 전체 컨테이너에 대해 쿼리를 실행합니다.</p>
+          </b-input-group>
+
+      </b-form-group>
+
+      <b-form-group
+        v-if="selected === 'timesync-union'"
+        class="timesync"
+        invalid-feedback="required field"
+        :state="fieldState">
+        <b-input-group>
+          <b-input-group-text slot="prepend">
+            <div class="prepend-first">그룹 이름</div>
+          </b-input-group-text>
+          <b-form-input v-model="timesync.groupName" :state="fieldState" required></b-form-input>
+          <div v-show="timesync.ae" class="ts-alert">
+            <b-alert show variant="secondary">
+                <span> selected Sensor : {{timesync.ae}} </span>
+                <b-button variant="outline-secondary" v-on:click="onTSReselectAE" class="ts-button"> reselect </b-button> 
+            </b-alert>
+          </div>
+        </b-input-group>
+
+          <b-input-group v-show="!timesync.ae">
+            <b-input-group-text slot="prepend">
+              <div class="prepend-first">Select AE </div>
+            </b-input-group-text>
+            <vue-table-dynamic 
+              :params="aeList" 
+              @select="onTSSelect"
+              ref="ae-table">
+            </vue-table-dynamic>
+          </b-input-group>
+
+          <b-input-group v-show="timesync.ae">
+            <b-input-group-text slot="prepend">
+              <div class="prepend-first">Select CNT</div>
+            </b-input-group-text>
+            <vue-table-dynamic 
+              :params="cntList" 
+              @selection-change="onTSSelectionChange"
+              ref="cnt-table">
+            </vue-table-dynamic>
+            <p> * container를 선택하지 않으면 전체 컨테이너에 대해 쿼리를 실행합니다.</p>
+          </b-input-group>
+      </b-form-group>
       </form>
     </b-modal>
     </div>

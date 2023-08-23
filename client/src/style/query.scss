@@ -68,14 +68,15 @@
         height: 320px;
         overflow:auto;
         .sensorButton{
-          width: 60%;
-          height: 50px;
+          width: 95%;
+          height: 60px;
           display: inline-block;
           background-color: white; 
           border-color: grey;
           color: grey;
           margin: 5px;
           text-align: center;
+          word-wrap: break-word;
           transition-duration: 0.2s;
         }
         .sensorButton:hover {
@@ -201,7 +202,20 @@
           height: 47px;
         }
       }
-
+      .timesync {
+        .ts-table {
+          width: 100%;
+        }
+        .ts-alert {
+          width: 100%;
+          margin: 10px;
+          height: 60px;
+        }
+        p {
+          font-size: small;
+        }
+        
+      }
     }
   }
   

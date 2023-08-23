@@ -116,7 +116,7 @@ signalTraps.forEach((type) => {
 console.log('Started Consumer for topic "' + topic + '" in group "' + clientId + '"');
 
 /**
- * 10초에 한 번씩 Redis 정보 Mysql에 업데이트
+ * 1초에 한 번씩 Redis 정보 Mysql에 업데이트
  */
 setInterval(() => {
   redisClient.hgetall("count", (err, obj) => {
@@ -254,7 +254,7 @@ let saveLatest = async (data) => {
                 }
                 console.log("SUCCESS [saveLatest] -- INSERT latestcin \n result of cin insert: ", results.affectedRows);
               });
-            }
+            } 
             insertData = null;
             logMessage = "Latest CIN INSERT success";
             connection.release();

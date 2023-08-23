@@ -54,10 +54,6 @@ export default {
       label: "",
       poa: "",
       nu: "",
-      model: {
-        field: "",
-        type: null
-      },
       disabledDates: {
         to: new Date(today.getFullYear(), today.getMonth(), today.getDate())
         // from: new Date(2016, 0, 26), // Disable all dates after specific date
@@ -99,7 +95,7 @@ export default {
         mia: null,
         timeseries: "true",
         spatialdata: "false",
-        datamodel: []
+        datamodel: ""
       },
       cin: {
         ae: null,
@@ -116,13 +112,6 @@ export default {
         nct: null,
         pn: null
       },
-
-      modelOption: [
-        { value: "string", text: "String" },
-        { value: "float", text: "Float" },
-        { value: "integer", text: "Integer" },
-        { value: "boolean", text: "Boolean" }
-      ],
       data: "",
       selected: null,
       selectOption: [
@@ -240,10 +229,6 @@ export default {
 
       this.label = "";
       this.poa = "";
-      this.model = {
-        field: "",
-        type: null
-      };
 
       this.clearDatetime();
     },
@@ -260,9 +245,6 @@ export default {
     },
     inputCheck(parameter) {
       let cntList = this.list.cnt[this.cnt.path.length - 1];
-    },
-    addDataModelInput() {
-      this.cnt.datamodel.push({ field: "", type: null });
     },
     getAeList() {
       this.$http
@@ -425,7 +407,6 @@ export default {
 
       if (type === "cnt") {
         this.cnt.lbl.unshift(this.label);
-        this.cnt.datamodel.unshift(this.model);
         delete this.resourceInformation["cnt"];
 
       }
@@ -449,8 +430,6 @@ export default {
           typeof this.resourceInformation[attribute] === "object" &&
           Util.emptyStringCheck(this.resourceInformation[attribute][0])
         ) {
-          delete this.resourceInformation[attribute];
-        } else if (attribute === 'datamodel' && (Util.emptyStringCheck(this.resourceInformation[attribute][0]['field']) || Util.emptyStringCheck(this.resourceInformation[attribute][0]['type']))) {
           delete this.resourceInformation[attribute];
         }
       });

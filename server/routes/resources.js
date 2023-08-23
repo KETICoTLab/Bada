@@ -69,7 +69,6 @@ let saveResource = (type, data, userId, path, storage, connection, datamodel = n
   insertData.user = userId;
 
   if (type === "cnt") {
-    let model = {};
     let parentResource = {
       ae: path.split('/')[1],
       cnt: insertData.rn,
@@ -78,11 +77,8 @@ let saveResource = (type, data, userId, path, storage, connection, datamodel = n
     insertData.timeseries = storage.timeseries;
     insertData.spatialData = storage.spatialdata;
     if (datamodel != null) {
-      datamodel.forEach((element) => {
-        model[element.field] = element.type;
-      });
-      insertData.dm = JSON.stringify(model);
-      redisClient.hmset("datamodel", insertData.path, JSON.stringify(model));
+      insertData.dm = datamodel;
+      redisClient.hmset("datamodel", insertData.path, datamodel);
 
     }
     let redisCacheValue = 0;

@@ -222,56 +222,9 @@
                     <div class="prepend-first">{{"dm" | acronymInterpreter}}</div>
                     <div class="prepend-second">dm</div>
                   </b-input-group-text>
-                  <b-form-input class="datamodel-field" v-model="model.field" type="text" placeholder="Field Name"></b-form-input>
-                  <b-input-group-append>
-                    <b-form-select class="datamodel-type" v-model="model.type" :options="modelOption">
-                        <template slot="first">
-                          <option :value="null" disabled>-- Select Data Type --</option>
-                        </template>
-                    </b-form-select>
-                  </b-input-group-append>
-                  <b-input-group-append>
-                    <b-button variant="info" v-on:click="addDataModelInput()">+</b-button>
-                  </b-input-group-append>
+                  <b-form-textarea  class="datamodel-field" v-model="cnt.datamodel" type="text" placeholder="Put Json Schema"></b-form-textarea>
                 </b-input-group>
-                <div v-for="(item, index) in cnt.datamodel" :key="item.index">
-                  <b-input-group class="input-label">
-                    <b-form-input class="datamodel-field" v-model="cnt.datamodel[index].field" type="text" placeholder="Field Name"></b-form-input>
-                    <b-input-group-append>
-                       <b-form-select class="datamodel-type" v-model="cnt.datamodel[index].type" :options="modelOption">
-                          <template slot="first">
-                            <option :value="null" disabled>-- Select Data Type --</option>
-                          </template>
-                       </b-form-select>
-                    </b-input-group-append>
-                    <b-input-group-append>
-                      <b-button variant="info" v-on:click="deleteTextInput('datamodel',index)">-</b-button>
-                    </b-input-group-append>
-                  </b-input-group>
-                </div>
               </div>
-            </form>
-
-            <form class="input-form-cin" v-else-if="selected==='cin'">
-              <b-input-group prepend="Parent Resource">
-                <b-form-select v-model="cin.ae" :options="list.ae" v-on:input="selectAe(cin.ae)">
-                  <template slot="first">
-                    <option :value="null" disabled>-- Select an Application Entity --</option>
-                  </template>
-                </b-form-select>
-                <b-form-select v-model="cin.cnt" :options="list.cnt">
-                  <template slot="first">
-                    <option :value="null" disabled>-- Select an Container --</option>
-                  </template>
-                </b-form-select>
-              </b-input-group>
-              <b-input-group class="textarea" prepend="CON">
-                <b-form-textarea id="textarea1" 
-                  v-model="cin.con"
-                  :rows="3"
-                  :max-rows="6">
-                </b-form-textarea>
-              </b-input-group>
             </form>
 
             <form class="input-form-sub" v-else-if="selected==='sub'">
@@ -392,64 +345,6 @@
             </div>
           </div>
         </div>
-        <!-- <div class="input-area data-model" v-if="selected==='cnt'">
-          <div class="form-title">Data Model</div>
-          <div>
-          * Data Model 입력이 없을 경우 자동으로 데이터 타입이 저장됩니다.<br>
-          * 이후 실시간 스트림 데이터 질의 처리에서 문제가 있을 수 있습니다.
-          </div>
-          <div class="form-area">
-            <form class="input-form-ae" >
-              <button>기존 데이터 모델 선택</button> * 기능 구현 필요
-              <b-input-group>
-                <b-input-group-text slot="prepend">
-                  <div class="prepend-first">
-                    <span>Data Model Name</span>
-                    <span class="text-danger"> *</span>
-                  </div>
-                </b-input-group-text>
-                <b-form-input id="rn" v-model="cnt.datamodel.modelName" type="text" placeholder="Enter data model name"></b-form-input>
-              </b-input-group>
-
-              <div class="data-model-group">
-                <b-input-group>
-                  <b-input-group-text slot="prepend">
-                    <div class="prepend-first">Data Model</div>
-                  </b-input-group-text>
-
-                  <b-form-input class="datamodel-field" v-model="model.field" type="text" placeholder="Field Name"></b-form-input>
-                  <b-input-group-append>
-                    <b-form-select class="datamodel-type" v-model="model.type" :options="modelOption">
-                        <template slot="first">
-                          <option :value="null" disabled>-- Select Data Type --</option>
-                        </template>
-                    </b-form-select>
-                  </b-input-group-append>
-
-                  <b-input-group-append>
-                    <b-button variant="info" v-on:click="addDataModelInput('model')">+</b-button>
-                  </b-input-group-append>
-
-                </b-input-group>
-                <div v-for="(item, index) in cnt.datamodel.model" :key="item.index">
-                  <b-input-group class="input-label">
-                    <b-form-input class="datamodel-field" v-model="cnt.datamodel.model[index].field" type="text" placeholder="Field Name"></b-form-input>
-                    <b-input-group-append>
-                       <b-form-select class="datamodel-type" v-model="cnt.datamodel.model[index].type" :options="modelOption">
-                          <template slot="first">
-                            <option :value="null" disabled>-- Select Data Type --</option>
-                          </template>
-                       </b-form-select>
-                    </b-input-group-append>
-                    <b-input-group-append>
-                      <b-button variant="info" v-on:click="deleteDataModelInput(index)">-</b-button>
-                    </b-input-group-append>
-                  </b-input-group>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div> -->
       </div>
       <b-modal :title="modal.title" ref="modal" 
         ok-only

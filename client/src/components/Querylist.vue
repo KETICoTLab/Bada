@@ -31,10 +31,11 @@
         </b-card>
       </div>
       <div class="block result">
-        <b-card title="Query Result" class="queryResult">
+        <b-card title="Query Result" class="queryResult">  
+          <p>recent 10 records</p>
           <b-table fluid striped bordered sticky-header show-empty v-if="queryResults.length == 0" :items="queryResults" class="result-table"></b-table>
           <b-table fluid striped bordered sticky-header responsive v-else-if="queryResults !=[] && Object.keys(queryResults[0]).length > 7" :items="queryResults" class="result-table"></b-table>
-          <b-table fluid striped bordered sticky-header show-empty v-else :items="queryResults" class="result-table"></b-table>
+          <b-table fluid striped bordered sticky-header show-empty v-else :fields="queryFields" :items="queryResults" :default-sort="queryFields.WINDOW_START" class="result-table" ></b-table>
         </b-card>
       </div>
       <div class="block graph" v-show="queryResultShow">

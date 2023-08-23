@@ -1,8 +1,9 @@
 const http = require("http");
 const config = require("../configuration/config.json");
 const router = require("express").Router();
-const Influx = require("influx");
+const database = require("../src/database");
 const redis = require("redis");
+const { access } = require("fs");
 const redisClient = redis.createClient(config.db.redis);
 
 var options = {
@@ -16,18 +17,6 @@ var options = {
   },
   maxRedirects: 20,
 };
-const influx = new Influx.InfluxDB({
-  host: config.db.influx.host,
-  database: config.db.influx.database,
-  password: config.db.influx.password,
-  // schema: [
-  //   {
-  //     measurement: "tide",
-  //     fields: { height: Influx.FieldType.FLOAT },
-  //     tags: ["unit", "location"],
-  //   },
-  // ],
-});
 
 /**
  * Get Connector Status
@@ -55,6 +44,7 @@ const influx = new Influx.InfluxDB({
   },
 ]
 */
+
 router.get("/connectors", (req, res) => {
   options.path = "/ksql";
   let request = http.request(options, function (response) {
@@ -212,52 +202,12 @@ router.get("/sensors", (req, res) => {
  * Describe Table
  */
 
-// spatial data
-router.get("/schema/spatial", (req, res) => {
-  options.path = "/ksql";
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
-    response.on("data", function (chunk) {
-      data += chunk;
-    });
-
-    response.on("end", function (chunk) {
-      console.log(data);
-      if (response.statusCode === 400) {
-        res.send(null);
-      } else {
-        // resultData = JSON.parse(data);
-        let respData = {};
-        resultData = JSON.parse(data)[0].sourceDescription.fields;
-        resultData.forEach((element, index) => {
-          respData[element.name] = element.schema.type;
-        });
-        res.status(response.statusCode).json(respData);
-      }
-    });
-
-    response.on("error", function (error) {
-      console.log(error);
-      res.status(response.statusCode).json(error);
-    });
-  });
-  console.log(`Describe spatial;`);
-  var postData = JSON.stringify({
-    ksql: `Describe spatial;`,
-    streamsProperties: {},
-  });
-  request.write(postData);
-  request.end();
-});
-
 // timeseries data
-router.get("/schema/:sensorAe/:sensorCnt", (req, res) => {
+router.get("/schema/:sensorName", (req, res) => {
   options.path = "/ksql";
   // let sensorName = req.params.sensorName;
-  let sensorAe = req.params.sensorAe;
-  let sensorCnt = req.params.sensorCnt;
-  console.log(sensorAe, sensorCnt);
+  let sensorName = req.params.sensorName;
+  console.log(sensorName);
   // let resources = sensorName.split("/");
   let request = http.request(options, function (response) {
     let data = "";
@@ -286,9 +236,9 @@ router.get("/schema/:sensorAe/:sensorCnt", (req, res) => {
       res.status(response.statusCode).json(error);
     });
   });
-  console.log(`Describe "${sensorAe}_${sensorCnt}";`);
+  console.log(`Describe "${sensorName}";`);
   var postData = JSON.stringify({
-    ksql: `Describe "${sensorAe}_${sensorCnt}";`,
+    ksql: `Describe "${sensorName}";`,
     streamsProperties: {},
   });
 
@@ -320,9 +270,14 @@ router.get("/redisStorage", (req, res) => {
 router.post("/createSensor", (req, res) => {
   // spatial sensor create
   options.path = "/ksql";
-  if (req.body.sensorName == "spatial") {
-    let sql = `create stream if not exists spatial (applicationentity varchar, container varchar, creationtime varchar, latitude double, longitude double, altitude double) with (kafka_topic = 'refine.spatial', value_format = 'json', partitions = 1);`;
+  let { type, ae, cnt } = req.body.sensorName
 
+  if (type == "spatial") {
+    console.log("HERE")
+    let sql = `create stream "spatial_${ae}_${cnt}" ("applicationEntity" String, "container" String, "latitude" Double, "longitude" Double, "altitude" Double, "data" String) with (kafka_topic = 'refine.spatial.${ae}.${cnt}', value_format = 'json', partitions = 1);`
+
+    console.log("KSQL Create stream SQL : ", sql);
+    // Create Table In KSQLDB
     let request = http.request(options, function (response) {
       let data = "";
 
@@ -347,78 +302,117 @@ router.post("/createSensor", (req, res) => {
     });
     request.write(postData);
     request.end();
-    return;
-  }
 
-  // timeseries sensor create
-  let resources = req.body.sensorName.split("/");
-  let sensorAe = resources[0];
-  let sensorCnt = resources[1];
-  influx
-    // .query(`select * from timeseries where ApplicationEntity='${sensorAe}' and Container='${sensorCnt}' limit 1`)
-    .query(`select * from ${sensorAe} where Container='${sensorCnt}' limit 1`)
-    .then((result) => {
-      let rawColumn = [];
-      Object.keys(result[0]).forEach((key) => {
-        // if (result[0][key] === null || key === "time") {
-        //   delete result[0][key];
-        // } 
-        // else{
-        //   rawColumn.push(key.split('.')[2]);
-        // }
-        if (key.includes(`${sensorAe}.${sensorCnt}`)) {
-          rawColumn.push(key);
-        } else if (key == 'APPLICATIONENTITY' || key == 'CONTAINER') {
-          rawColumn.push(key);
-        }
-      });
-      //Get Sensor Schema from InfluxDB
-      console.log("Create Sensor Result: ", result);
-      // let rawColumn = Object.keys(result[0]);
-      let dataColumn = {};
-      let sql = `create stream "${sensorAe}_${sensorCnt}" (`;
-      rawColumn.forEach((key, index) => {
-        if (result[0][key] !== null) {
+    /**
+     * For JDBC Connector V.2.2 (data parsing)
+     */
+
+    /*
+    database.spatial
+      .query(`select * from ${ae}_${cnt} limit 1`)
+      .then((result) => {
+        // console.log(result.rows[0]);
+
+        let rawColumn = Object.keys(result.rows[0]);
+        let sql = `create stream "spatial_${ae}_${cnt}" (`;
+        rawColumn.forEach((key, index) => {
           if (index !== 0) sql += ", ";
-          let dataType = typeof result[0][key] === "number" ? "Double" : "String";
+          let dataType = typeof result.rows[0][key] === "number" ? "Double" : "String";
+          sql += `"${key}" ${dataType}`;
+        });
+        sql += `) with (kafka_topic = 'refine.spatial.${ae}.${cnt}', value_format = 'json', partitions = 1);`;
 
-          if (key.includes(`${sensorAe}.${sensorCnt}`)) {
-            sql += `"${key.split('.')[2]}" ${dataType}`;
-          } else {
-            sql += `"${key}" ${dataType}`;
+        console.log("KSQL Create stream SQL : ", sql);
+        // Create Table In KSQLDB
+        let request = http.request(options, function (response) {
+          let data = "";
+
+          response.on("data", function (chunk) {
+            data += chunk;
+          });
+
+          response.on("end", function (chunk) {
+            console.log("Create spatial Sensor : ", data);
+            res.status(response.statusCode).json(data);
+          });
+
+          response.on("error", function (error) {
+            console.error(error);
+            res.status(400).send(error);
+          });
+        });
+
+        var postData = JSON.stringify({
+          ksql: sql,
+          streamsProperties: { "ksql.streams.auto.offset.reset": "earliest" },
+        });
+        request.write(postData);
+        request.end();
+      });
+      */
+  } else {
+    database.timeseries
+      // .query(`select * from timeseries where ApplicationEntity='${sensorAe}' and Container='${sensorCnt}' limit 1`)
+      .query(`select * from ${ae} where container='${cnt}' limit 1`)
+      .then((result) => {
+        console.log(result[0])
+        
+        let rawColumn = [];
+
+        Object.keys(result[0]).forEach((key) => {
+          if (key.includes(`${ae}.${cnt}`)) {
+            rawColumn.push(key);
+          } else if (key == 'applicationEntity' || key == 'container') {
+            rawColumn.push(key);
           }
-        }
-      });
-      sql += `) with (kafka_topic = 'refine.${sensorAe}.${sensorCnt}', value_format = 'json', partitions = 1);`;
+        });
+        //Get Sensor Schema from InfluxDB
+        let prefixLen = `${ae}.${cnt}.`.length;
+        let sql = `create stream "${ae}_${cnt}" (`;
+        rawColumn.forEach((key, index) => {
+            if (index !== 0) sql += ", ";
+            let dataType = typeof result[0][key] === "number" ? "Double" : "String";
 
-      console.log("SQL : ", sql);
-      // Create Table In KSQLDB
-      let request = http.request(options, function (response) {
-        let data = "";
+            if (key.includes(`${ae}.${cnt}.`)) {
+              sql += `"${key.substring(prefixLen)}" ${dataType}`;
+            } else {
+              sql += `"${key}" ${dataType}`;
+            }
+        });
+        sql += `) with (kafka_topic = 'refine.${ae}.${cnt}', value_format = 'json', partitions = 1);`;
 
-        response.on("data", function (chunk) {
-          data += chunk;
+        console.log("KSQL Create stream SQL : ", sql);
+        // Create Table In KSQLDB
+        let request = http.request(options, function (response) {
+          let data = "";
+
+          response.on("data", function (chunk) {
+            data += chunk;
+          });
+
+          response.on("end", function (chunk) {
+            console.log("Create timeseries Sensor : ", data);
+            res.status(response.statusCode).json(data);
+          });
+
+          response.on("error", function (error) {
+            console.error(error);
+            res.status(400).send(error);
+          });
         });
 
-        response.on("end", function (chunk) {
-          console.log("Create timeseries Sensor : ", data);
-          res.status(response.statusCode).json(data);
+        var postData = JSON.stringify({
+          ksql: sql,
+          streamsProperties: { "ksql.streams.auto.offset.reset": "earliest" },
         });
+        request.write(postData);
+        request.end();
+      })
+      .catch((error) => console.log("error: ", error));
+    }
 
-        response.on("error", function (error) {
-          console.error(error);
-          res.status(400).send(error);
-        });
-      });
 
-      var postData = JSON.stringify({
-        ksql: sql,
-        streamsProperties: { "ksql.streams.auto.offset.reset": "earliest" },
-      });
-      request.write(postData);
-      request.end();
-    })
-    .catch((error) => console.log("error: ", error));
+  return;
 });
 
 /**
@@ -706,96 +700,90 @@ router.get("/queryResults", ((req, res) => {
  */
 
 router.post("/function/anomalyDetection", (req, res) => {
-  let data = req.body.data;
-  console.log("create query : ", data);
-  options.path = "/ksql";
-  let sensorAe = "";
-  let sensorCnt = "";
+  let unionSql = "";
   let sql = "";
-  let sensor = data.sensor;
-  let comparisonValue = data.comparisonValue;
-  let column = data.column;
-  let queryID = "";
-  let queryName = "";
-
-  let inequalitySign = "";
-  data.inequalitySign === "less then" ? (inequalitySign = "<") : data.inequalitySign === "greater then" ? (inequalitySign = ">") : (inequalitySign = "=");
-
   let date = getCurrentDate();
-  if (sensor !== "spatial") {
-    let resources = sensor.split("/");
-    sensorAe = resources[0];
-    sensorCnt = resources[1];
-    sql = `CREATE TABLE "AD_${sensorAe}_${sensorCnt}_${date}"
-    WITH (kafka_topic='AD_${sensorAe}_${sensorCnt}_${date}', partitions=1, value_format='JSON', KEY_FORMAT = 'JSON') AS 
-    SELECT TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START, 
-    TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
-    ApplicationEntity, Container, COUNT(*) AS COUNT
-    FROM "${sensorAe}_${sensorCnt}"
-    WINDOW TUMBLING (SIZE ${data.time} SECONDS)
-    WHERE ${column} ${inequalitySign} ${comparisonValue}
-    GROUP BY "APPLICATIONENTITY", "CONTAINER"
-    Having Count(*) > ${data.count};`;
-  } else {
-    sql = `CREATE TABLE AD_spatial_${date}
-    WITH (kafka_topic='AD_spatial_${date}', partitions=1, value_format='JSON', KEY_FORMAT = 'JSON') AS 
-    SELECT TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START, 
-    TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
-    APPLICATIOINENTITY, CONTAINER, COUNT(*) AS COUNT
-    FROM spatial
-    WINDOW TUMBLING (SIZE ${data.time} SECONDS)
-    WHERE ${column} ${inequalitySign} ${comparisonValue}
-    GROUP BY "APPLICATIONENTITY", "CONTAINER"
-    Having Count(*) > ${data.count};`;
-  }
+  let queryID = "";
+  // let queryName = "";
 
-  console.log(sql);
+  // console.log(data);
+  let { queryName, sensors, column, time, inequalitySign, comparisonValue, count, option } = req.body.data;
+  inequalitySign === "less then" ? (inequalitySign = "<=") : inequalitySign === "greater then" ? (inequalitySign = ">=") : (inequalitySign = "=");
+  column.type === 'DOUBLE' ? comparisonValue = parseFloat(comparisonValue) : comparisonValue = comparisonValue.toString();
 
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
+  // console.log({ queryName, sensor, column, time, inequalitySign, comparisonValue, count, option });
 
-    // console.log("queryData : ", queryData.queryString);
-    response.on("data", function (chunk) {
-      data += chunk;
-    });
+  options.path = "/ksql";
 
-    response.on("end", function (chunk) {
-      console.log(data);
-      resultData = JSON.parse(data);
-
-      if (!resultData[0]['@type'].includes('error')) {
-        //CREATE INFLUXDB CONNECTOR with
-        if (sensor !== "spatial") {
-          queryName = `AnomalyDetection_${sensorAe}_${sensorCnt}_${column}_${inequalitySign}_${comparisonValue}`;
-          createInfluxdbConnector(`AD_${sensorAe}_${sensorCnt}_${date}`);
-        } else {
-          queryName = `AnomalyDetection_${spatial}_${column}_${inequalitySign}_${comparisonValue}`;
-          createInfluxdbConnector(`AD_spatial_${date}`);
-        }
-
-        // create redis query data
-        if (resultData[0].commandStatus) {
-          queryID = resultData[0].commandStatus.queryId;
-          redisClient.hmset("query", queryID, queryName);
-        }
-
-      }
-
-      res.status(response.statusCode).json(resultData);
-    });
-
-    response.on("error", function (error) {
-      console.error(error);
-      res.status(400).send(error);
-    });
+  console.log(JSON.stringify(sensors), JSON.stringify(column));
+  // union SQL
+  unionSql = `CREATE STREAM "AD_${queryName}_GROUPING_${date}" ("applicationEntity" String, "container" String, "${column.column}" ${column.type}) WITH (kafka_topic = 'AD_${queryName}_GROUPING_${date}', partitions = 1, value_format = 'JSON', key_format = 'JSON'); `; 
+  sensors.forEach((sensor) => {
+    unionSql += `INSERT INTO "AD_${queryName}_GROUPING_${date}" SELECT "applicationEntity", "container", "${column.column}" FROM "${sensor}"; `;
   });
-  var postData = JSON.stringify({
-    ksql: `${sql}`,
+
+  sql = `CREATE TABLE "AD_${queryName}_${date}"
+  WITH (kafka_topic='AD_${queryName}_${date}', partitions=1, value_format='JSON', KEY_FORMAT = 'JSON') AS 
+  SELECT TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START, 
+  TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
+  "applicationEntity", "container", COUNT(*) AS "count"
+  FROM "AD_${queryName}_GROUPING_${date}"
+  WINDOW TUMBLING (SIZE ${time} SECONDS)
+  WHERE ${column.column} ${inequalitySign} ${comparisonValue}
+  GROUP BY "applicationEntity", "container"
+  Having Count(*) > ${count};`;
+
+  console.log("UNION SQL : ", unionSql);
+  console.log("sql : ", sql);
+
+  let unionRequest = http.request(options, function (unionResponse) {
+    let unionData = "";
+    unionResponse.on("data", function (chunk) {
+      unionData += chunk;
+    });
+    unionResponse.on("end", function () {
+      console.log("AD Union Query Data : ", unionData);
+      let request = http.request(options, function (response) {
+        let data = "";
+        let resultData = "";
+        response.on("data", function (chunk) {
+          data += chunk;
+        })
+        response.on("end", function () {
+          console.log(data);
+          resultData = JSON.parse(data);
+
+          if (!resultData[0]['@type'].includes('error')) {
+            //CREATE INFLUXDB CONNECTOR with
+
+            // queryAlias = `AnomalyDetection_${queryName}_${column.column}_${inequalitySign}_${comparisonValue}`;
+            createInfluxdbConnector(`AD_${queryName}_${date}`);
+
+            // create redis query data
+            if (resultData[0].commandStatus) {
+              queryID = resultData[0].commandStatus.queryId;
+              redisClient.hmset("query", queryID, `AD_${queryName}`);
+            }
+          }
+          res.status(response.statusCode).json(resultData);
+        })
+      })
+
+      let postData = JSON.stringify({
+        ksql: `${sql}`,
+        streamsProperties: {},
+      });
+      request.write(postData);
+      request.end();
+    })
+  })
+  let unionPostData = JSON.stringify({
+    ksql: `${unionSql}`,
     streamsProperties: {},
   });
-  request.write(postData);
-  request.end();
+  unionRequest.write(unionPostData);
+  unionRequest.end();
+
 });
 
 /**
@@ -815,186 +803,97 @@ router.post("/function/anomalyDetection", (req, res) => {
  * 
  */
 router.post("/function/windowAggregation", (req, res) => {
-  let data = req.body.data;
-  console.log("create query : ", data);
-  options.path = "/ksql";
-  let sensorAe = "";
-  let sensorCnt = "";
+
+  let unionSql = "";
   let sql = "";
   let date = getCurrentDate();
-  let aggregationFunction = data.aggregationFunction;
-  let column = data.column;
-  let sensor = data.sensor;
   let queryID = "";
-  let queryName = "";
+  // let queryName = "";
 
-  if (sensor !== "spatial") {
-    let resources = sensor.split("/");
-    sensorAe = resources[0];
-    sensorCnt = resources[1];
-    sql = `CREATE TABLE "WA_${sensorAe}_${sensorCnt}_${date}"
-    WITH (kafka_topic='WA_${sensorAe}_${sensorCnt}_${date}', partitions=1, value_format='JSON', key_format='JSON') AS SELECT
-    ApplicationEntity, Container, TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START,
-    TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
-    COUNT(*) AS COUNT, ${aggregationFunction}(${column}) AS RESULT
-    FROM "${sensorAe}_${sensorCnt}"
-    WINDOW TUMBLING(SIZE ${data.time} SECONDS)
-    GROUP BY ApplicationEntity, Container;`;
-  } else {
-    sql = `CREATE TABLE WA_spatial_${date}
-    WITH (kafka_topic='WA_spatial_${date}', partitions=1, value_format='JSON', key_format='JSON') AS SELECT
-    ApplicationEntity, Container, TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START,
-    TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
-    COUNT(*) AS COUNT, ${aggregationFunction}(${column}) AS RESULT
-    FROM spatial
-    WINDOW TUMBLING(SIZE ${data.time} SECONDS)
-    GROUP BY ApplicationEntity, Container;`;
-  }
+  // console.log(data);
+  let { queryName, sensors, column, time, aggregationFunction, option } = req.body.data;
 
-  console.log(sql);
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
+  // console.log({ queryName, sensor, column, time, inequalitySign, comparisonValue, count, option });
 
-    // console.log("queryData : ", queryData.queryString);
-    response.on("data", function (chunk) {
-      data += chunk;
-    });
-
-    response.on("end", function (chunk) {
-      console.log(data);
-      resultData = JSON.parse(data);
-      //CREATE INFLUXDB CONNECTOR with
-
-      if (sensor !== "spatial") {
-        queryName = `WindowAggregation_${sensorAe}_${sensorCnt}_${aggregationFunction}_${column}`;
-        createInfluxdbConnector(`WA_${sensorAe}_${sensorCnt}_${date}`);
-      } else {
-        queryName = `WindowAggregation_spatial_${aggregationFunction}_${column}`;
-        createInfluxdbConnector(`WA_spatial_${date}`);
-      }
-      if (resultData[0].commandStatus) {
-        queryID = resultData[0].commandStatus.queryId;
-        redisClient.hmset("query", queryID, queryName);
-      }
-      res.status(response.statusCode).json(resultData);
-    });
-
-    response.on("error", function (error) {
-      console.error(error);
-      res.status(400).send(error);
-    });
-  });
-
-  var postData = JSON.stringify({
-    ksql: `${sql}`,
-    streamsProperties: {},
-  });
-  request.write(postData);
-  request.end();
-});
-
-/**
- * Device Grouping
- */
-/**
- * CREATE TABLE grouping_sensors(ContainerName varchar, column type, column type ...)
-WITH (kafka_topic='grouping_sensors', partitions=1, value_format='JSON')
-INSERT INTO grouping_sensors SELECT 'ae_sensor1' AS SENSORNAME, * FROM ae_sensor1;
-INSERT INTO grouping_sensors SELECT 'ae_sensor2' AS SENSORNAME, * FROM ae_sensor2;
-INSERT INTO grouping_sensors SELECT 'ae_sensor3' AS SENSORNAME, * FROM ae_sensor3;
- */
-
-router.post("/function/grouping", (req, res) => {
-  let data = req.body.data;
-  console.log("create query : ", data, req.body.schema);
-  let sensors = data.sensor;
-  let groupName = data.groupName;
-  let schema = JSON.parse(req.body.schema);
-  let columns = Object.keys(schema);
-  let sensorName = "";
   options.path = "/ksql";
-  let date = getCurrentDate();
 
-  let queryID = "";
-  let queryName = "";
-
-  let sql = `CREATE STREAM "${groupName}" (`;
-  columns.forEach((key, index) => {
-    sql += `${key} ${schema[key]}`;
-    if (index < columns.length - 1) {
-      sql += ", ";
-    }
-  });
-  sql += `) WITH (kafka_topic='GP_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON'); `;
-  sensors.forEach((element) => {
-    sensorName = `${element[0]}_${element[1]}`;
-    sql += `INSERT INTO "${groupName}" SELECT * FROM "${sensorName}"; `;
+  console.log(JSON.stringify(sensors), JSON.stringify(column));
+  // union SQL
+  unionSql = `CREATE STREAM "WA_${queryName}_GROUPING_${date}" ("applicationEntity" String, "container" String, "${column.column}" ${column.type}) WITH (kafka_topic = 'WA_${queryName}_GROUPING_${date}', partitions = 1, value_format = 'JSON', key_format = 'JSON'); `;
+  sensors.forEach((sensor) => {
+    unionSql += `INSERT INTO "WA_${queryName}_GROUPING_${date}" SELECT "applicationEntity", "container", "${column.column}" FROM "${sensor}"; `;
   });
 
-  console.log(sql);
+  sql = `CREATE TABLE "WA_${queryName}_${date}"
+  WITH (kafka_topic='WA_${queryName}_${date}', partitions=1, value_format='JSON', KEY_FORMAT = 'JSON') AS 
+  SELECT TIMESTAMPTOSTRING(WINDOWSTART, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_START, 
+  TIMESTAMPTOSTRING(WINDOWEND, 'yyyy-MM-dd HH:mm:ss Z') AS WINDOW_END, 
+  "applicationEntity", "container", COUNT(*) AS "count", ${aggregationFunction}("${column.column}") AS "${aggregationFunction}"
+  FROM "WA_${queryName}_GROUPING_${date}"
+  WINDOW TUMBLING (SIZE ${time} SECONDS)
+  GROUP BY "applicationEntity", "container";`;
 
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
+  console.log("UNION SQL : ", unionSql);
+  console.log("sql : ", sql);
 
-    // console.log("queryData : ", queryData.queryString);
-    response.on("data", function (chunk) {
-      data += chunk;
+  let unionRequest = http.request(options, function (unionResponse) {
+    let unionData = "";
+    unionResponse.on("data", function (chunk) {
+      unionData += chunk;
     });
+    unionResponse.on("end", function () {
+      console.log("WA Union Query Data : ", unionData);
+      let request = http.request(options, function (response) {
+        let data = "";
+        let resultData = "";
+        response.on("data", function (chunk) {
+          data += chunk;
+        })
+        response.on("end", function () {
+          console.log(data);
+          resultData = JSON.parse(data);
+          if (!resultData[0]['@type'].includes('error')) {
+            //CREATE INFLUXDB CONNECTOR with
 
-    response.on("end", function (chunk) {
-      console.log(data);
-      resultData = JSON.parse(data);
+            // queryAlias = `AnomalyDetection_${queryName}_${column.column}_${inequalitySign}_${comparisonValue}`;
+            createInfluxdbConnector(`WA_${queryName}_${date}`);
 
-      //CREATE INFLUXDB CONNECTOR with
-      createInfluxdbConnector(`GP_${groupName}_${date}`);
-      // Save Redis Data
-      if (resultData[1].commandStatus) {
-        queryID = resultData[1].commandStatus.queryId;
-        queryName = `Grouping_${groupName}`;
-        redisClient.hmset("query", queryID, queryName);
-      }
-      res.status(response.statusCode).json(resultData);
-    });
+            // create redis query data
+            if (resultData[0].commandStatus) {
+              queryID = resultData[0].commandStatus.queryId;
+              redisClient.hmset("query", queryID, `WA_${queryName}`);
+            }
+          }
+          res.status(response.statusCode).json(resultData);
+        })
+      })
 
-    response.on("error", function (error) {
-      console.error(error);
-      res.status(400).send(error);
-    });
-  });
-
-  var postData = JSON.stringify({
-    ksql: `${sql}`,
+      let postData = JSON.stringify({
+        ksql: `${sql}`,
+        streamsProperties: {},
+      });
+      request.write(postData);
+      request.end();
+    })
+  })
+  let unionPostData = JSON.stringify({
+    ksql: `${unionSql}`,
     streamsProperties: {},
   });
-  request.write(postData);
-  request.end();
+  unionRequest.write(unionPostData);
+  unionRequest.end();
 });
 
 
-/**
- * Device Timesync
- */
-/**
- * CREATE TABLE grouping_sensors(ContainerName varchar, column type, column type ...)
-WITH (kafka_topic='grouping_sensors', partitions=1, value_format='JSON')
-INSERT INTO grouping_sensors SELECT 'ae_sensor1' AS SENSORNAME, * FROM ae_sensor1;
-INSERT INTO grouping_sensors SELECT 'ae_sensor2' AS SENSORNAME, * FROM ae_sensor2;
-INSERT INTO grouping_sensors SELECT 'ae_sensor3' AS SENSORNAME, * FROM ae_sensor3;
- */
-router.post("/function/timesync", (req, res) => {
+
+
+router.post("/function/timesync-join", (req, res) => {
   // console.log("create query : ", req.body);
-  let { sensor, groupName } = req.body.data;
-  let schema = JSON.parse(req.body.schema);
-  let columns = Object.keys(schema);
+  let { sensors, groupName } = req.body.data;
+  let sensorList = Object.keys(sensors);
+  // let columns = Object.keys(schema);
   
-  let deleteIdx = columns.indexOf("APPLICATIONENTITY");
-  if(deleteIdx != -1) columns.splice(deleteIdx, 1);
-  deleteIdx = columns.indexOf("CONTAINER");
-  if (deleteIdx != -1) columns.splice(deleteIdx, 1);
-  
-  let numberOfSensor = sensor.length;
+  let numberOfSensor = sensorList.length;
   options.path = "/ksql";
   let date = getCurrentDate();
 
@@ -1006,24 +905,27 @@ router.post("/function/timesync", (req, res) => {
    * create stream DO_three as select a.AE, from_unixtime(a.rowtime), a.container, b.container, a.temperature, a.humidity, b.gps, c.carbon from temp_sensor_stream a join location_sensor_stream b within 2 hours on a.AE = b.AE join carbon_sensor_stream c within 2 hours on a.AE=c.AE emit changes;
    */
 
-  let unionSql = `CREATE STREAM "TS_UNION_${groupName}_${date}" WITH (kafka_topic='TS_UNION_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
-    `as select a.applicationentity as applicationentity, from_unixtime(a.rowtime)`;
+  let unionSql = `CREATE STREAM "TS_JOIN_UNION_${groupName}_${date}" WITH (kafka_topic='TS_JOIN_UNION_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+    `as select a."applicationEntity" as applicationentity, from_unixtime(a.rowtime) as timestamp`;
+  let sensorAlias = "";
+  let sensor = "";
+  let columns;
   for (let n = 0; n < numberOfSensor; n++) {
-    // unionSql += `, `
-    // unionSql += `${sensorAlias}.container`;
-    let sensorAlias = String.fromCharCode(n + 97);
-
-    for (let column of columns) {
-      unionSql += `, ${sensorAlias}.${column}`;
-
+    sensorAlias = String.fromCharCode(n + 65);
+    sensor = sensorList[n];
+    columns = sensors[sensor];
+    for (let column of Object.keys(columns)) {
+      if (column != "applicationEntity") {
+        unionSql += `, ${sensorAlias}."${column}"`;
+      }
     }
   }
-  unionSql += ` from "${sensor[0][0]}_${sensor[0][1]}" a`;
+  unionSql += ` from "${sensorList[0]}" a`;
 
   for (let n = 1; n < numberOfSensor; n++) {
-    let streamName = `"${sensor[n][0]}_${sensor[n][1]}"`;
-    let sensorAlias = String.fromCharCode(n+97)
-    unionSql += ` join ${streamName} ${sensorAlias} within 2 hours on a.applicationentity = ${sensorAlias}.applicationentity`;
+    let sensor = sensorList[n];
+    let sensorAlias = String.fromCharCode(n + 65)
+    unionSql += ` join "${sensor}" ${sensorAlias} within 2 hours on a."applicationEntity" = ${sensorAlias}."applicationEntity"`;
     if (n == numberOfSensor - 1) {
       unionSql += ` emit changes;`
     }
@@ -1036,16 +938,20 @@ router.post("/function/timesync", (req, res) => {
    * select A_AE, from_unixtime(windowstart) as timestamp, latest_by_offset(temperature) as temperature, latest_by_offset(gps) as gps, latest_by_offset(carbon) as carbon from do_three window tumbling (size 10 minutes) group by a_ae emit changes;
    */
 
-  let sql = `CREATE TABLE "TS_${groupName}_${date}" WITH (kafka_topic='TS_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+  let sql = `CREATE TABLE "TS_JOIN_${groupName}_${date}" WITH (kafka_topic='TS_JOIN_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
     ` as select applicationentity, from_unixtime(windowstart) as timestamp`;
   for (let n = 0; n < numberOfSensor; n++){
-    let sensorAlias = String.fromCharCode(n + 97);
-    for (let column of columns) {
-      sql += `, latest_by_offset(${sensorAlias}_${column}) as ${sensor[n][1]}_${column}`;
+    sensorAlias = String.fromCharCode(n + 65);
+    sensor = sensorList[n];
+    columns = sensors[sensor];
+    for (let column of Object.keys(columns)) {
+      if (column != "applicationEntity") {
+        sql += `, latest_by_offset("${sensorAlias}_${column}") as "${sensor}_${column}"`;
+      }
     }
   }
 
-  sql += ` from "TS_UNION_${groupName}_${date}" window tumbling (size 10 minutes) group by applicationentity emit changes;`
+  sql += ` from "TS_JOIN_UNION_${groupName}_${date}" window tumbling (size 10 minutes) group by applicationentity emit changes;`
 
 
   console.log(sql);
@@ -1069,13 +975,14 @@ router.post("/function/timesync", (req, res) => {
         });
         response.on("end", () => {
           resultData = JSON.parse(data);
+          console.log(resultData)
 
           //CREATE INFLUXDB CONNECTOR with
           createInfluxdbConnector(`TS_${groupName}_${date}`);
           // Save Redis Data
           if (resultData[0].commandStatus) {
             queryID = resultData[0].commandStatus.queryId;
-            queryName = `Timesync_${groupName}`;
+            queryName = `TS_${groupName}`;
             redisClient.hmset("query", queryID, queryName);
           }
           res.status(response.statusCode).json(resultData);
@@ -1109,6 +1016,136 @@ router.post("/function/timesync", (req, res) => {
   unionRequest.end();
 });
 
+router.post("/function/timesync-union", (req, res) => {
+  // console.log("create query : ", req.body);
+  let { sensors, groupName } = req.body.data;
+  let sensorList = Object.keys(sensors);
+  // let columns = Object.keys(schema);
+
+  let numberOfSensor = sensorList.length;
+  options.path = "/ksql";
+  let date = getCurrentDate();
+
+  let queryID = "";
+  let queryName = "";
+
+  /**
+   * create union Stream (Data --> Map)
+   * create stream DO_three as select a.AE, from_unixtime(a.rowtime), a.container, b.container, a.temperature, a.humidity, b.gps, c.carbon from temp_sensor_stream a join location_sensor_stream b within 2 hours on a.AE = b.AE join carbon_sensor_stream c within 2 hours on a.AE=c.AE emit changes;
+   */
+
+  let unionSql = `CREATE STREAM "TS_JOIN_UNION_${groupName}_${date}" WITH (kafka_topic='TS_JOIN_UNION_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+    `as select a."applicationEntity" as applicationentity, from_unixtime(a.rowtime) as timestamp`;
+  let sensorAlias = "";
+  let sensor = "";
+  let columns;
+  for (let n = 0; n < numberOfSensor; n++) {
+    sensorAlias = String.fromCharCode(n + 65);
+    sensor = sensorList[n];
+    columns = sensors[sensor];
+    for (let column of Object.keys(columns)) {
+      if (column != "applicationEntity") {
+        unionSql += `, ${sensorAlias}."${column}"`;
+      }
+    }
+  }
+  unionSql += ` from "${sensorList[0]}" a`;
+
+  for (let n = 1; n < numberOfSensor; n++) {
+    let sensor = sensorList[n];
+    let sensorAlias = String.fromCharCode(n + 65)
+    unionSql += ` join "${sensor}" ${sensorAlias} within 2 hours on a."applicationEntity" = ${sensorAlias}."applicationEntity"`;
+    if (n == numberOfSensor - 1) {
+      unionSql += ` emit changes;`
+    }
+  }
+
+  console.log(unionSql);
+
+  /**
+   * create tumbling table get latest data
+   * select A_AE, from_unixtime(windowstart) as timestamp, latest_by_offset(temperature) as temperature, latest_by_offset(gps) as gps, latest_by_offset(carbon) as carbon from do_three window tumbling (size 10 minutes) group by a_ae emit changes;
+   */
+
+  let sql = `CREATE TABLE "TS_JOIN_${groupName}_${date}" WITH (kafka_topic='TS_JOIN_${groupName}_${date}', partitions=1, value_format='JSON', key_format='JSON')` +
+    ` as select applicationentity, from_unixtime(windowstart) as timestamp`;
+  for (let n = 0; n < numberOfSensor; n++) {
+    sensorAlias = String.fromCharCode(n + 65);
+    sensor = sensorList[n];
+    columns = sensors[sensor];
+    for (let column of Object.keys(columns)) {
+      if (column != "applicationEntity") {
+        sql += `, latest_by_offset("${sensorAlias}_${column}") as "${sensor}_${column}"`;
+      }
+    }
+  }
+
+  sql += ` from "TS_JOIN_UNION_${groupName}_${date}" window tumbling (size 10 minutes) group by applicationentity emit changes;`
+
+
+  console.log(sql);
+
+  let unionRequest = http.request(options, function (unionResponse) {
+    let unionData = "";
+
+    unionResponse.on("data", function (unionChunk) {
+      unionData += unionChunk;
+    });
+
+    unionResponse.on("end", function () {
+      console.log(unionData);
+
+      let request = http.request(options, function (response) {
+        let data = "";
+        let resultData = "";
+
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+        response.on("end", () => {
+          resultData = JSON.parse(data);
+          console.log(resultData)
+
+          //CREATE INFLUXDB CONNECTOR with
+          createInfluxdbConnector(`TS_${groupName}_${date}`);
+          // Save Redis Data
+          if (resultData[0].commandStatus) {
+            queryID = resultData[0].commandStatus.queryId;
+            queryName = `TS_${groupName}`;
+            redisClient.hmset("query", queryID, queryName);
+          }
+          res.status(response.statusCode).json(resultData);
+        })
+        response.on("error", function (error) {
+          console.error(error);
+          res.status(400).send(error);
+        })
+      })
+
+      let postData = JSON.stringify({
+        ksql: `${sql}`,
+        streamsProperties: {},
+      });
+      request.write(postData);
+      request.end();
+
+    });
+
+    unionResponse.on("error", function (error) {
+      console.error(error);
+      res.status(400).send(error);
+    });
+  });
+
+  let unionPost = JSON.stringify({
+    ksql: `${unionSql}`,
+    streamsProperties: {},
+  });
+  unionRequest.write(unionPost);
+  unionRequest.end();
+});
+
+
 /**
  * geoFence
  */
@@ -1117,64 +1154,150 @@ router.post("/function/timesync", (req, res) => {
  */
 
 router.post("/function/geoFence", (req, res) => {
-  let data = req.body.data;
-  console.log("create query : ", data);
-  let { ae, cnt, fenceName, polygon } = data;
+
+  let unionSql = "";
+  let sql = "";
+  let date = getCurrentDate();
+  let queryID = "";
+  // let queryName = "";
+
+  // console.log(data);
+  let { sensors, queryName, polygon } = req.body.data;
+
+  // console.log({ queryName, sensor, column, time, inequalitySign, comparisonValue, count, option });
 
   options.path = "/ksql";
-  let date = getCurrentDate();
 
-  let sql = `CREATE TABLE "GF_${fenceName}_${date}"`;
-  let queryID = "";
-  let queryName = "";
+  console.log(JSON.stringify(sensors));
+  // union SQL
+  unionSql = `CREATE STREAM "GF_${queryName}_GROUPING_${date}" ("applicationEntity" String, "container" String, "latitude" Double, "longitude" Double, "altitude" Double, "data" String) WITH (kafka_topic = 'GF_${queryName}_GROUPING_${date}', partitions = 1, value_format = 'JSON', key_format = 'JSON'); `;
+  sensors.forEach((sensor) => {
+    unionSql += `INSERT INTO "GF_${queryName}_GROUPING_${date}" SELECT * FROM "${sensor}"; `;
+  });
 
-  sql += ` WITH (kafka_topic='GF_${fenceName}_${date}', partitions=1, value_format='JSON', key_format='JSON') AS SELECT applicationentity, container , LATEST_BY_OFFSET(creationtime) as creationtime, LATEST_BY_OFFSET(latitude) as latitude, LATEST_BY_OFFSET(longitude) as longitude, GEO_CONTAINED(LATEST_BY_OFFSET(latitude), LATEST_BY_OFFSET(longitude),'POLYGON((`;
+  sql = `CREATE TABLE "GF_${queryName}_${date}" 
+  WITH (kafka_topic='GF_${queryName}_${date}', partitions=1, value_format='JSON', key_format='JSON') AS 
+  SELECT "applicationEntity", "container", LATEST_BY_OFFSET("latitude") as "latitude", LATEST_BY_OFFSET("longitude") as "longitude",
+  GEO_CONTAINED(LATEST_BY_OFFSET("latitude"), LATEST_BY_OFFSET("longitude"),'POLYGON((`;
 
   polygon.forEach((element, index) => {
     sql += `${element.lng} ${element.lat}, `;
     if (index == polygon.length - 1) {
-      sql += `${polygon[0].lng} ${polygon[0].lat}))') as GEO_CONTAINED `;
+      sql += `${polygon[0].lng} ${polygon[0].lat}))') as "GEO_CONTAINED" `;
     }
   });
-  sql += `FROM spatial group by applicationentity, container;`;
+  sql += `FROM "GF_${queryName}_GROUPING_${date}" GROUP BY "applicationEntity", "container";`;
   console.log(sql);
 
-  let request = http.request(options, function (response) {
-    let data = "";
-    let resultData = "";
+  console.log("UNION SQL : ", unionSql);
+  console.log("sql : ", sql);
 
-    // console.log("queryData : ", queryData.queryString);
-    response.on("data", function (chunk) {
-      data += chunk;
+  let unionRequest = http.request(options, function (unionResponse) {
+    let unionData = "";
+    unionResponse.on("data", function (chunk) {
+      unionData += chunk;
     });
+    unionResponse.on("end", function () {
+      console.log("GF Union Query Data : ", unionData);
+      let request = http.request(options, function (response) {
+        let data = "";
+        let resultData = "";
+        response.on("data", function (chunk) {
+          data += chunk;
+        })
+        response.on("end", function () {
+          console.log(data);
+          resultData = JSON.parse(data);
+          if (!resultData[0]['@type'].includes('error')) {
+            //CREATE INFLUXDB CONNECTOR with
 
-    response.on("end", function (chunk) {
-      console.log(data);
-      resultData = JSON.parse(data);
+            // queryAlias = `AnomalyDetection_${queryName}_${column.column}_${inequalitySign}_${comparisonValue}`;
+            createInfluxdbConnector(`GF_${queryName}_${date}`);
 
-      // CREATE INFLUXDB CONNECTOR with
-      createInfluxdbConnector(`GF_${fenceName}_${date}`);
-      // Save Redis Data
-      if (resultData[0].commandStatus) {
-        queryID = resultData[0].commandStatus.queryId;
-        queryName = `GeoFence_${fenceName}`;
-        redisClient.hmset("query", queryID, queryName);
-      }
-      res.status(response.statusCode).json(resultData);
-    });
+            // create redis query data
+            if (resultData[0].commandStatus) {
+              queryID = resultData[0].commandStatus.queryId;
+              redisClient.hmset("query", queryID, `GF_${queryName}`);
+            }
+          }
+          res.status(response.statusCode).json(resultData);
+        })
+      })
 
-    response.on("error", function (error) {
-      console.error(error);
-      res.status(400).send(error);
-    });
-  });
-
-  var postData = JSON.stringify({
-    ksql: `${sql}`,
+      let postData = JSON.stringify({
+        ksql: `${sql}`,
+        streamsProperties: {},
+      });
+      request.write(postData);
+      request.end();
+    })
+  })
+  let unionPostData = JSON.stringify({
+    ksql: `${unionSql}`,
     streamsProperties: {},
   });
-  request.write(postData);
-  request.end();
+  unionRequest.write(unionPostData);
+  unionRequest.end();
+
+
+  // let data = req.body.data;
+  // console.log("create query : ", data);
+  // let { ae, cnt, fenceName, polygon } = data;
+
+  // options.path = "/ksql";
+  // let date = getCurrentDate();
+
+  // let sql = `CREATE TABLE "GF_${fenceName}_${date}"`;
+  // let queryID = "";
+  // let queryName = "";
+
+  // sql += ` WITH (kafka_topic='GF_${fenceName}_${date}', partitions=1, value_format='JSON', key_format='JSON') AS SELECT applicationentity, container , LATEST_BY_OFFSET(creationtime) as creationtime, LATEST_BY_OFFSET(latitude) as latitude, LATEST_BY_OFFSET(longitude) as longitude, GEO_CONTAINED(LATEST_BY_OFFSET(latitude), LATEST_BY_OFFSET(longitude),'POLYGON((`;
+
+  // polygon.forEach((element, index) => {
+  //   sql += `${element.lng} ${element.lat}, `;
+  //   if (index == polygon.length - 1) {
+  //     sql += `${polygon[0].lng} ${polygon[0].lat}))') as GEO_CONTAINED `;
+  //   }
+  // });
+  // sql += `FROM spatial group by applicationentity, container;`;
+  // console.log(sql);
+
+  // let request = http.request(options, function (response) {
+  //   let data = "";
+  //   let resultData = "";
+
+  //   // console.log("queryData : ", queryData.queryString);
+  //   response.on("data", function (chunk) {
+  //     data += chunk;
+  //   });
+
+  //   response.on("end", function (chunk) {
+  //     console.log(data);
+  //     resultData = JSON.parse(data);
+
+  //     // CREATE INFLUXDB CONNECTOR with
+  //     createInfluxdbConnector(`GF_${fenceName}_${date}`);
+  //     // Save Redis Data
+  //     if (resultData[0].commandStatus) {
+  //       queryID = resultData[0].commandStatus.queryId;
+  //       queryName = `GeoFence_${fenceName}`;
+  //       redisClient.hmset("query", queryID, queryName);
+  //     }
+  //     res.status(response.statusCode).json(resultData);
+  //   });
+
+  //   response.on("error", function (error) {
+  //     console.error(error);
+  //     res.status(400).send(error);
+  //   });
+  // });
+
+  // var postData = JSON.stringify({
+  //   ksql: `${sql}`,
+  //   streamsProperties: {},
+  // });
+  // request.write(postData);
+  // request.end();
 });
 
 async function createInfluxdbConnector(connectorName) {

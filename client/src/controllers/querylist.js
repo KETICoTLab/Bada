@@ -8,6 +8,7 @@ export default {
       currentSensor: "",
       queryData: [],
       queryDetails: {},
+      queryFields: [],
       queryResults: [],
       queryResultShow:false,
       columnList: [],
@@ -117,17 +118,24 @@ export default {
           .then(result => {
             console.log(result.data)
             let resultData = [];
-            result.data.forEach((element) => {
-              let data = element;
-              if (data["GEO_CONTAINED"] == false) {
-                data["_cellVariants"] = { GEO_CONTAINED: "warning" };
-                resultData.push(data);
-              } else {
-                data["_cellVariants"] = { GEO_CONTAINED: "success" };
-                resultData.push(data);
-              }
-            })
-            this.queryResults = result.data;
+            if ( result.data.length !== 0 ) {
+              result.data.forEach((element) => {
+                let data = element;
+                if (data["GEO_CONTAINED"] == false) {
+                  data["_cellVariants"] = { GEO_CONTAINED: "warning" };
+                  resultData.push(data);
+                } else {
+                  data["_cellVariants"] = { GEO_CONTAINED: "success" };
+                  resultData.push(data);
+                }
+              })
+
+              // const { applicationEntity, container, WINDOW_START, WINDOW_END, ...rest } = result.data[0];
+              this.queryResults = result.data;
+            } else {
+              this.queryResults = [];
+            }
+
           });
         
       }
@@ -135,9 +143,8 @@ export default {
        * For Query Result Graph
        */
       let queryName = data.queryName;
-      if (queryName.includes("AnomalyDetection") || queryName.includes("WindowAggregation")) {
+      if (queryName.includes("AD") || queryName.includes("WA")) {
         this.queryResultShow = true;
-
       } else {
         this.queryResultShow = false;
       }

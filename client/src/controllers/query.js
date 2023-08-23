@@ -7,35 +7,51 @@ export default {
       connectorFields: [],
       connector: [],
       schema: [],
-      sensorlist: ["sensor1", "sensor2"],
-      spatialsensor: {
-        redisdata: [],
-        ae: [],
-        cnt: []
-      },
-      searchinput: "",
-      parsedsensor: {
-        data: [["Application Entity", "Container"]],
-        header: "row",
-        showCheck: true,
-        enableSearch: true,
-        header: "row",
-        border: true,
-        stripe: true,
-        sort: [0, 1],
-        height: 300
-      },
-      aeList: {
+      sensorlist: [],
+      // for AD, WA
+      timeseriesSensor: {
         data: [],
         header: "row",
         showCheck: true,
         enableSearch: true,
-        header: "row",
         border: true,
         stripe: true,
         sort: [0],
         height: 300
       },
+      // for GF
+      spatialSensor: {
+        data: [],
+        header: "row",
+        showCheck: true,
+        enableSearch: true,
+        border: true,
+        stripe: true,
+        sort: [0],
+        height: 300
+      },
+      // for TS
+      aeList: {
+        data: [],
+        header: "row",
+        showCheck: true,
+        enableSearch: true,
+        border: true,
+        stripe: true,
+        sort: [0],
+        height: 300
+      },
+      cntList: {
+        data: [],
+        header: "row",
+        showCheck: true,
+        enableSearch: true,
+        border: true,
+        stripe: true,
+        sort: [0],
+        height: 300
+      },
+      searchinput: "",
       createTableTag: false,
       currentSensor: "",
       userQuery: "",
@@ -43,38 +59,36 @@ export default {
         { value: "anomalyDetection", text: "이상 상황 감지" },
         { value: "windowAggregation", text: "기간별 디바이스 전달" },
         { value: "geoFence", text: "geofencing" },
-        { value: "timesync", text: "디바이스 시간 동기화" }
+        { value: "timesync-join", text: "디바이스 시간 동기화 (JOIN)" },
+        { value: "timesync-union", text: "디바이스 시간 동기화 (UNION)" }
       ],
       selected: null,
       anomalyDetection: {
-        sensor: null,
+        queryName : "",
+        sensors: [],
         column: null,
         time: null,
         inequalitySign: null,
         comparisonValue: null,
         count: null,
-        storageMethod: null,
         option: {
-          inequalityOption: ["less then", "equal", "greater then"],
-          storageOption: ["Timeseries", "Spatio", "Http"]
+          inequalityOption: ["less then", "equal", "greater then"]
         }
       },
-      timesync: { sensor: [], groupName: null },
+      timesync: { ae: null, containers: [], groupName: null },
       windowAggregation: {
-        sensor: null,
+        queryName: "",
+        sensors: [],
         column: null,
         time: null,
         aggregationFunction: [],
-        storageMethod: null,
         option: {
-          aggregationOption: ["SUM", "NORMAL", "AVG", "MIN", " MAX"],
-          storageOption: ["Timeseries", "Spatio", "Http"]
+          aggregationOption: ["SUM", "AVG", "MIN", "MAX"]
         }
       },
       geoFence: {
-        ae: null,
-        cnt: null,
-        fenceName: null,
+        sensors: [],
+        queryName: null,
         polygon: [
           { lat: null, lng: null },
           { lat: null, lng: null },
@@ -98,54 +112,71 @@ export default {
     // { value: "cin", text: "Content Instance", disabled: true},
   },
   methods: {
-    createSpatialSensor() {
-      // console.log("Create Spatial Sensor");
-      this.$http
-        .post("/streammanagement/createSensor", {
-          sensorName: "spatial"
-        })
-        .then(result => {
-          // console.log("Create Sensor Table : ", result);
-        });
-      // console.log("Current Sensor: ", this.currentSensor);
-    },
     getQueryData(index) {
       return this.queryData[index];
     },
+    
     getSensorList() {
       this.$http.get("/streammanagement/sensors").then(result => {
-        let refineTopic = [];
-        let aeList = new Set();
-        aeList.add("Application Entity");
+        let sensorList = [];
+        let timeseriesTopic = [['sensor']];
+        let spatialTopic = [['sensor']];
+        let aeArray = [];
+        let aeList = [['applicationEntity']];
         /**
          * [{"@type":"kafka_topics","statementText":"SHOW TOPICS;","topics":[{"name":"default_ksql_processing_log","replicaInfo":[1]},{"name":"refine.kafka_ae.t_cnt","replicaInfo":[1]},{"name":"refine.spatial","replicaInfo":[1]},{"name":"refine.kafka_ae.ts_cnt","replicaInfo":[1]},{"name":"timeseries","replicaInfo":[1]}],"warnings":[]}]
          */
-        let rawTopicData = JSON.parse(result.data)[0];
-        let topicList = rawTopicData.topics;
-        topicList.forEach((element, index) => {
-          let resources = element.name.split(".");
-          if (resources[0] === "refine") {
-            if (resources[1] === "spatial") {
-              refineTopic.push(`${resources[1]}`);
-            } else {
-              refineTopic.push(`${resources[1]}/${resources[2]}`);
-              this.parsedsensor.data.push([resources[1], resources[2]]);
-              aeList.add(resources[1]);
+        if (JSON.parse(result.data)[0].topics) {
+          let rawTopicData = JSON.parse(result.data)[0];
+          let topicList = rawTopicData.topics;
+          topicList.forEach((element, index) => {
+            let resources = element.name.split(".");
+            let refineIndex = element.name.indexOf(".")
+            let firstIndex = element.name.indexOf(".", refineIndex + 1);
+            let secondIndex = element.name.indexOf(".", firstIndex + 1);
+            let ae, cnt;
+            if (resources[0] === "refine") {
+              if (resources[1] === "spatial") {
+                ae = element.name.substring(firstIndex + 1, secondIndex);
+                cnt = element.name.substring(secondIndex + 1);
+                // spatialTopic.push(`spatial_${ae}_${cnt}`);
+                spatialTopic.push([`spatial_${ae}_${cnt}`]);
+                sensorList.push({ type: "spatial", ae: ae, cnt: cnt });
+              } else {
+                ae = element.name.substring(refineIndex + 1, firstIndex);
+                cnt = element.name.substring(firstIndex + 1);
+                timeseriesTopic.push([`${ae}_${cnt}`]);
+                sensorList.push({ type: "timeseries", ae: ae, cnt: cnt });
+                // save ae name list
+                aeArray.push(ae);
+                
+              }
             }
-          }
-        });
-        // console.log(refineTopic);
-        // console.log(this.parsedsensor);
-        aeList.forEach(element => {
-          this.aeList.data.push([element]);
-        });
-        this.sensorlist = refineTopic;
-        return refineTopic;
+          });
+        }
+
+        // input parsed data to this.data
+        this.timeseriesSensor.data = timeseriesTopic;
+        this.spatialSensor.data = spatialTopic;
+        aeArray = [...new Set(aeArray)];
+        aeArray.forEach((element) => {
+          aeList.push([element]);
+        })
+        this.aeList.data = aeList;
+        this.sensorlist = sensorList;
+        return sensorList;
       });
     },
     filteredList() {
       return this.sensorlist.filter(sensor =>
-        sensor.toLowerCase().includes(this.searchinput.toLowerCase())
+        sensor.ae.toLowerCase().includes(this.searchinput.toLowerCase()) || 
+          sensor.cnt.toLowerCase().includes(this.searchinput.toLowerCase())
+      );
+    },
+    removeDuplicates(arr) { 
+      return arr.filter(
+        (thing, index, self) =>
+          index === self.findIndex((t) => t.ae === thing.ae && t.cnt === thing.cnt)
       );
     },
     getConnectors() {
@@ -162,9 +193,9 @@ export default {
           ) {
             return;
           } else {
-            console.log(result.data)
+            // console.log(result.data)
             let newResult = result.data.map(({ className, ...rest }) => rest);
-            console.log(newResult)
+            // console.log(newResult)
 
             for (let i = 0; i < newResult.length; i++) {
               data = newResult[i];
@@ -190,10 +221,14 @@ export default {
       this.currentSensor = "";
 
       let schema = [];
-
-      schema = [];
+      let name = "";
+      if (sensorName.type == 'timeseries') {
+        name = `${sensorName.ae}_${sensorName.cnt}`
+      } else {
+        name = `spatial_${sensorName.ae}_${sensorName.cnt}`
+      }
       this.$http
-        .get("/streammanagement/schema/" + sensorName)
+        .get("/streammanagement/schema/" + name)
         .then(result => {
           if (
             result.data === null ||
@@ -203,17 +238,14 @@ export default {
             // No exist KSQLDB Table
             this.createTableTag = true;
             this.currentSensor = sensorName;
-            // showCreateButton(sensorName);
           } else {
             //exist KSQLDB Table
             schema.push(result.data);
             this.schema = schema;
             this.columnList = schema;
 
-            // console.log("Schema : ", schema);
           }
-          console.log("VALUE 0 : ", this.schema);
-          // resolve(schema);
+          // console.log("VALUE 0 : ", this.schema);
           return schema;
         })
         .catch(err => {
@@ -223,29 +255,13 @@ export default {
       this.schema = [];
     },
     createSensorTable() {
-      // let modal = { title: "", content: {} };
       this.$http
         .post("/streammanagement/createSensor", {
           sensorName: this.currentSensor
         })
         .then(result => {
-          // this.responseMessage = "Result";
-          // modal.title = "Success";
-          // modal.content = result.data;
           this.getSchema(this.currentSensor);
         });
-      // .then(() => {
-      //   this.showModal(modal.title, modal.content);
-      // })
-      // .catch(err => {
-      //   modal.title = "fail";
-      //   modal.content = err.response.data;
-
-      //   console.log("error", err);
-      //   this.responseMessage = err.response.status;
-      //   this.showModal(modal.title, modal.content);
-      // });
-      // console.log("Current Sensor: ", this.currentSensor);
     },
 
     submitQuery(query) {
@@ -296,22 +312,6 @@ export default {
       this.modal.contents = data;
       this.$refs.modal.show();
     },
-    getRedisStorage() {
-      let aeList = [];
-      this.$http.get("/streammanagement/redisStorage").then(result => {
-        // console.log(result.data);
-        this.spatialsensor.redisdata = result.data;
-        if (result.data.length > 0) {
-          result.data.forEach(element => {
-            aeList.push(element.ae);
-          });
-
-          this.spatialsensor.ae = [...new Set(aeList)];
-        }
-
-        // console.log(this.spatialsensor);
-      });
-    },
     selectAE(value) {
       let redisdata = this.spatialsensor.redisdata;
       let cntList = [];
@@ -332,10 +332,11 @@ export default {
       } else if (data === "windowAggregation") {
         this.modal.title = "기간별 디바이스 전달";
       } else if (data === "geoFence") {
-        this.getRedisStorage();
         this.modal.title = "geofence 정보 입력";
-      } else if (data === "timesync") {
-        this.modal.title = "디바이스 시간 동기화";
+      } else if (data === "timesync-join") {
+        this.modal.title = "디바이스 시간 동기화 (JOIN)";
+      } else if (data === "timesync-union") {
+        this.modal.title = "디바이스 시간 동기화 (UNION)"
       }
       this.selected = data;
       this.modal.contents = data;
@@ -345,43 +346,58 @@ export default {
       Object.assign(this.$data, this.$options.data.call(this));
       this.getSensorList();
     },
-    selectSensor(value) {
-      // console.log(value);
+    selectSensor(sensors) {
+      // let sensors = value.slice(1);
+      let columnSet = [];
 
-      let schema = [];
-      let resultSchema = [];
-      this.$http
-        .get("/streammanagement/schema/" + value)
-        .then(result => {
-          if (
-            result.data === null ||
-            result.data === undefined ||
-            result.data === ""
-          ) {
-            // No exist KSQLDB Table
-            // SHOW MODAL
-            console.log("NO TABLE");
-          } else {
-            //exist KSQLDB Table
-            schema.push(result.data);
-            for (var idx in schema[0]) {
-              resultSchema.push(idx);
+      //Check Schema
+      const getSchemas = new Promise((resolve, reject) => {
+        let schemas = [];
+        sensors.forEach((sensor, index) => {
+          // let sensorname = element;
+          this.$http
+            .get("/streammanagement/schema/" + sensor)
+            .then(result => {
+              //exist KSQLDB Table
+              schemas.push(result.data);
+              if (schemas.length == sensors.length) {
+                resolve(schemas);
+              }
+              // return schemas;
+            })
+            .catch(err => {
+              reject(err);
+            });
+        });
+      });
+
+      getSchemas
+        .then((result) => {
+          let checkSchema = true;
+          console.log("THIS IS SCHEMAS : ", result);
+          for (let i = 1; i < result.length; i++){
+            if (JSON.stringify(result[i - 1]) !== JSON.stringify(result[i])) {
+              checkSchema = false;
+              break;
             }
-            this.columnList = resultSchema;
-
-            // console.log("Schema : ", schema);
           }
-          console.log("THIS COLUMN LIST : ", this.columnList);
-          return schema;
+          // every schema is same
+          if (checkSchema) {
+            Object.keys(result[0]).forEach((key) => {
+              columnSet.push({ text: key, value: { column: key, type: result[0][key] } });
+            })
+
+            // this.columnList = Object.keys(result[0]);
+            this.columnList = columnSet;
+
+            console.log("THIS COLUMN LIST : ", this.columnList);
+          } else {
+            this.columnList = [{text: "Select sensors with the same schema", disabled: "disabled"}];
+          }
         })
-        .catch(err => {
+        .catch((err) => {
           console.log(err);
         });
-
-      // init value
-      this.columnList = [];
-
-      // console.log(this.windowAggregation.sensor);
     },
     /**
      * for create function modal
@@ -395,35 +411,46 @@ export default {
       // delete input data
       this.fieldState = null;
 
-      this.anomalyDetection.sensor = null;
+      this.anomalyDetection.queryName = "";
+      this.anomalyDetection.sensors = [];
       this.anomalyDetection.column = null;
       this.anomalyDetection.time = null;
       this.anomalyDetection.inequalitySign = null;
       this.anomalyDetection.comparisonValue = null;
       this.anomalyDetection.count = null;
-      this.anomalyDetection.storageMethod = null;
 
+      this.timesync.ae = null;
       this.timesync.groupName = null;
-      this.timesync.sensor = [];
+      this.timesync.containers = [];
 
       this.columnList = [];
 
-      this.windowAggregation.sensor = null;
+      this.windowAggregation.queryName = "";
+      this.windowAggregation.sensors = [];
       this.windowAggregation.column = null;
       this.windowAggregation.time = null;
       this.windowAggregation.aggregationFunction = null;
-      this.windowAggregation.storageMethod = null;
 
-      this.spatialsensor.ae = [];
-      this.spatialsensor.cnt = [];
-      this.geoFence.ae = null;
-      this.geoFence.cnt = null;
+      // this.spatialsensor.ae = [];
+      // this.spatialsensor.cnt = [];
+
+      this.geoFence.sensors = [];
       this.geoFence.fenceName = null;
       this.geoFence.polygon = [
         { lat: null, lng: null },
         { lat: null, lng: null },
         { lat: null, lng: null }
       ];
+      if (this.$refs.table) {
+        this.$refs.table.setAllRowChecked(false);
+      }
+      if (this.$refs["ae-table"]) {
+        this.$refs["ae-table"].setAllRowChecked(false);
+      }
+      if (this.$refs["cnt-table"]) {
+        this.$refs["cnt-table"].setAllRowChecked(false);
+      }
+
     },
     handleOk(bvModalEvent) {
       // console.log(selected)
@@ -439,7 +466,6 @@ export default {
         return;
       }
       let submitData = null;
-      let selectedData = null;
       if (this.selected === "anomalyDetection") {
         submitData = this.anomalyDetection;
         this.$http
@@ -465,24 +491,79 @@ export default {
             // this.$bvModal.hide("modal-prevent-closing");
             this.showModal(modal.title, modal.content);
           });
-      } else if (this.selected === "timesync") {
+      } else if (this.selected === "timesync-join") {
+        let sensors = [];
+        let ae = this.timesync.ae[0];
+        let containers = this.timesync.containers;
+        // ae 중복 선택하는 경우
+        if (ae == null) {
+          modal.title = "fail";
+          modal.content = "Select only one application entity";
+          // this.responseMessage = "Select only one application entity";
+          this.showModal(modal.title, modal.content);
+          return;
+        }
+
+        // container 선택 안한 경우 -> 전체 선택으로
+        if (containers.length == 0) {
+          this.sensorlist.forEach((element) => {
+            if (element.type === "timeseries" && element.ae === ae) {
+              sensors.push(`${element.ae}_${element.cnt}`);
+            }
+          })
+        } else {
+          containers.forEach((element) => {
+            sensors.push(`${ae}_${element}`);
+          })
+        }
+        submitData = { groupName : this.timesync.groupName }
+
+        // 센서별 스키마 저장 후 create query
+        this.checkSchema(sensors).then(result => {
+          submitData.sensors = result;
+          console.log("submitdata : ", submitData);
+
+          this.$http
+            .post("/streammanagement/function/timesync-join", {
+              data: submitData
+            })
+            .then(result => {
+              console.log("Create Query : ", result);
+              this.responseMessage = "Result";
+              modal.title = "Success";
+              modal.content = result.data;
+            })
+            .then(() => {
+              this.showModal(modal.title, modal.content);
+            })
+            .catch(err => {
+              console.log(err);
+              modal.title = "fail";
+              modal.content = err.response.data;
+              console.log("error", err);
+              this.responseMessage = err.response.status;
+              // this.$bvModal.hide("modal-prevent-closing");
+              this.showModal(modal.title, modal.content);
+            });
+        });
+      } else if (this.selected === "timesync-union") { 
         submitData = this.timesync;
 
         selectedData = { ...submitData };
-        selectedData.sensor = [this.parsedsensor.data[0]];
+        selectedData.sensors = [this.parsedsensor.data[0]];
 
         this.parsedsensor.data.forEach(element => {
-          console.log(element[0], submitData.sensor[1]);
-          if (element[0] == submitData.sensor[1]) {
-            selectedData.sensor.push(element);
+          console.log(element[0], submitData.sensors[1]);
+          if (element[0] == submitData.sensors[1]) {
+            selectedData.sensors.push(element);
           }
         });
 
-        this.checkSchema(selectedData.sensor).then(schema => {
+        this.checkSchema(selectedData.sensors).then(schema => {
           if (schema !== false) {
             console.log(schema);
             this.$http
-              .post("/streammanagement/function/timesync", {
+              .post("/streammanagement/function/timesync-union", {
                 data: selectedData,
                 schema: schema
               })
@@ -570,14 +651,13 @@ export default {
       //   this.$bvModal.hide("modal-prevent-closing");
       // });
     },
-    async checkSchema(rows) {
-      let modal = { title: "", content: {} };
-      let schemas = [];
-      rows.shift();
-      let getschema = new Promise((resolve, reject) => {
-        rows.forEach((element, index) => {
+    async checkSchema(sensors) {
+      // let modal = { title: "", content: {} };
+      let sensorWithSchema = {}; // sensor : schema key value
+      return new Promise((resolve, reject) => {
+        sensors.forEach((sensor, index) => {
           this.$http
-            .get("/streammanagement/schema/" + element[0] + "/" + element[1])
+            .get("/streammanagement/schema/" + sensor)
             .then(result => {
               if (
                 result.data === null ||
@@ -586,15 +666,16 @@ export default {
               ) {
                 // No exist KSQLDB Table
                 console.log("NO KSQLDB SCHEMA");
-                this.responseMessage = "Result";
-                modal.title = "Fail";
-                modal.content = "Create sensor table first";
-                this.showModal("fail", "Create sensor table first");
+                // this.responseMessage = "Result";
+                // modal.title = "Fail";
+                // modal.content = "Create sensor table first";
+                this.showModal("fail", `Create sensor table first : ${sensor} `);
               } else {
+                // console.log(result);
                 //exist KSQLDB Table
-                schemas.push(JSON.stringify(result.data));
-                if (schemas.length === rows.length) {
-                  resolve(schemas);
+                sensorWithSchema[sensor] = result.data;
+                if (index + 1 === sensors.length) {
+                  resolve(sensorWithSchema);
                 }
               }
             })
@@ -604,39 +685,63 @@ export default {
             });
         });
       });
-      return new Promise((resolve, reject) => {
-        getschema.then(value => {
-          const allEqual = arr => arr.every(v => v === arr[0]);
-          if (allEqual(value)) {
-            resolve(value[0]);
-          } else {
-            resolve(false);
+    },
+    async onTSSelect(isChecked, index, data) {
+      console.log(isChecked, index, data);
+      if (isChecked) {
+        this.timesync.ae = data;
+
+        let cntData = [['container']];
+        this.sensorlist.forEach((element) => {
+          if (element.type === "timeseries" && element.ae === data[0]) {
+            cntData.push([element.cnt]);
           }
-        });
-      });
+        })
+        this.cntList.data = cntData;
+        
+      } else {
+        this.timesync.ae = null;
+      }
+
     },
-    onSelect(isChecked, index, data) {
-      console.log("onSelect: ", isChecked, index, data);
-      console.log("Checked Data:", this.$refs.table.getCheckedRowDatas(true));
+    onTSReselectAE() {
+      this.timesync.ae = null;
+      this.cntList.data = [];
+      if (this.$refs["ae-table"]) {
+        this.$refs["ae-table"].setAllRowChecked(false);
+      }
+      if (this.$refs["cnt-table"]) {
+        this.$refs["cnt-table"].setAllRowChecked(false);
+      }
     },
-    onGroupSelectionChange(checkedDatas, checkedIndexs, checkedNum) {
-      // console.log("onGSelectionChange: ", checkedDatas,checkedIndexs,checkedNum);
-      this.grouping.sensor = checkedDatas;
+    onTSSelectionChange(checkedDatas, checkedIndexs, checkedNum) {
+      console.log("onTSelectionChange: ", checkedDatas,checkedIndexs,checkedNum);
+      let data = this.$refs["cnt-table"].getCheckedRowDatas(false).flat();
+      this.timesync.containers = data;      
     },
-    onTimeSelectionChange(checkedDatas, checkedIndexs, checkedNum) {
-      // console.log("onTSelectionChange: ", checkedDatas,checkedIndexs,checkedNum);
-      this.timesync.sensor = checkedDatas;
+    onADSelectionChange(checkedDatas, checkedIndexs, checkedNum) {
+      let data = this.$refs["table"].getCheckedRowDatas(false).flat();
+      this.anomalyDetection.sensors = data;
+      this.selectSensor(data);
+    },
+    onWASelectionChange(checkedDatas, checkedIndexs, checkedNum) {
+      let data = this.$refs["table"].getCheckedRowDatas(false).flat();
+      this.windowAggregation.sensors = data;
+      this.selectSensor(data)
+    },
+    onGFSelectionChange(checkedDatas, checkedIndexs, checkedNum) {
+      let data = this.$refs["table"].getCheckedRowDatas(false).flat();
+      this.geoFence.sensors = data;
     },
     addTextInput(attr) {
       this["geoFence"][attr].push({ lat: null, lng: null });
     },
     deleteTextInput(attr, index) {
       this["geoFence"][attr].splice(index, 1);
-    }
+    },
   },
   created() {
     this.getSensorList();
     this.getConnectors();
-    this.createSpatialSensor();
   }
 };

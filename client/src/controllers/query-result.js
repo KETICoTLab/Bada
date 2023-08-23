@@ -71,21 +71,22 @@ export default {
       this.chartOption.xAxis[0].data = [];
       if (this.queryData && this.showChart) {
         this.queryData.forEach((element) => {
-          console.log(element)
-          let { WINDOW_START, WINDOW_END, COUNT, RESULT } = element;
-          graphData.push({ WINDOW_START, WINDOW_END, COUNT, RESULT })
+          let { WINDOW_START, WINDOW_END, count, SUM, AVG, MIN, MAX } = element;
+            graphData.push({ WINDOW_START, WINDOW_END, count, SUM, AVG, MIN, MAX })
         })
 
 
         // set time
+        // 마지막 데이터 (가장 마지막 End TIme) 로 Tumbling Time 확인 (Window End - Window Start)
         let end_time = new Date(graphData[graphData.length - 1].WINDOW_END);
         let tumbling_time = end_time - new Date(graphData[graphData.length - 1].WINDOW_START);
         let date;
-        console.log(end_time, tumbling_time);
         let searchIndex = graphData.length - 1
 
+        // chartDataCount :  차트에 보여줄 데이터 개수
+        // 차트에 보여줄 데이터 개수만큼 데이터 생성
         for (let i = chartDataCount-1; i >= 0; i--) {
-
+        // 가장 마지막 데이터 End TIme 부터 tumbling time 간격으로 데이터 생성
           date = new Date(end_time - tumbling_time * i);
           this.chartOption.xAxis[0].data.push(date.toLocaleTimeString());
           this.chartOption.series[0].data.push(0)
@@ -97,20 +98,51 @@ export default {
             this.duration.end_date = date.toLocaleTimeString();
           }
 
-          //데이터 Endtime을 다 확인해야 함
+          let avgTotalSum = 0;
+          let avgTotalCount = 0;
+          let minTemp = 9999999999;
+          let maxTemp = -9999999999;
+          //데이터 Endtime을 다 확인해서 현재 x 축과 같은 시간을 가졌으면 데이터로 추가해줌
+          // new : 센서들 여러개를 union해서 쿼리를 생성한 경우 이때 결과를 union해서 보여줄 수 있게끔 처리 (ex. sum, avg)
 
-          for (let j = searchIndex; j >= 0; j--){
-            console.log("END TIME 찾기", date, new Date(graphData[j].WINDOW_END));
-            if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
-              console.log("############# HERE", date, new Date(graphData[j].WINDOW_END))
-              this.chartOption.series[0].data.pop();
-              if (graphData[j].RESULT !== undefined) {
-                this.chartOption.series[0].data.push(graphData[j].RESULT.toFixed(3))
-              } else {
-                this.chartOption.series[0].data.push(graphData[j].COUNT)
+          if (graphData[0].AVG) {
+            for (let j = searchIndex; j >= 0; j--) {
+              // console.log("END TIME 찾기", date, new Date(graphData[j].WINDOW_END));
+              if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
+                  avgTotalSum += graphData[j].AVG * graphData[j].count;
+                  avgTotalCount += graphData[j].count;
               }
-              break;
-
+            }
+            this.chartOption.series[0].data[chartDataCount - 1 - i] = avgTotalSum / avgTotalCount;
+          } else if (graphData[0].SUM) {
+            for (let j = searchIndex; j >= 0; j--) {
+              if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
+                this.chartOption.series[0].data[chartDataCount - 1 - i] = this.chartOption.series[0].data[chartDataCount - 1 - i] + graphData[j].SUM
+              }
+            }
+          } else if (graphData[0].MIN) {
+            for (let j = searchIndex; j >= 0; j--) {
+              if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
+                if (graphData[j].MIN < minTemp) {
+                  minTemp = graphData[j].MIN;
+                  this.chartOption.series[0].data[chartDataCount - 1 - i] = graphData[j].MIN;
+                }
+              }
+            }
+          } else if (graphData[0].MAX) {
+            for (let j = searchIndex; j >= 0; j--) {
+              if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
+                if (graphData[j].MAX > maxTemp) {
+                  maxTemp = graphData[j].MAX;
+                  this.chartOption.series[0].data[chartDataCount - 1 - i] = graphData[j].MAX;
+                }
+              }
+            }
+          } else {
+            for (let j = searchIndex; j >= 0; j--) {
+              if (new Date(graphData[j].WINDOW_END).getTime() == date.getTime()) {
+                this.chartOption.series[0].data[chartDataCount - 1 - i] = this.chartOption.series[0].data[chartDataCount - 1 - i] + graphData[j].count
+              }
             }
           }
         }
